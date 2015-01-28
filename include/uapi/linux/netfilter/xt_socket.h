@@ -32,6 +32,5 @@ struct sock *xt_socket_lookup_slow_v4(struct net *net,
 struct sock *xt_socket_lookup_slow_v6(struct net *net,
 				      const struct sk_buff *skb,
 				      const struct net_device *indev);
-void xt_socket_put_sk(struct sock *sk);
 
 #endif /* _XT_SOCKET_H */
