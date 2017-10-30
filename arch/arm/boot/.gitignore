@@ -3,7 +3,6 @@ zImage
 xipImage
 bootpImage
 uImage
-*.dtb
 zImage-dtb
 Image-dtb-hdr
 Image-dtb
