@@ -479,6 +479,11 @@ int tas2557_enable(struct tas2557_priv *pTAS2557, bool bEnable)
 	pProgram = &(pTAS2557->mpFirmware->mpPrograms[pTAS2557->mnCurrentProgram]);
 	if (bEnable) {
 		if (!pTAS2557->mbPowerUp) {
+			if (!pTAS2557->mbCalibrationLoaded) {
+				tas2557_set_calibration(pTAS2559, 0xFF);
+				pTAS2557->mbCalibrationLoaded = true;
+			}
+
 			if (pTAS2557->mbLoadConfigurationPrePowerUp) {
 				dev_dbg(pTAS2557->dev, "load coefficient before power\n");
 				pTAS2557->mbLoadConfigurationPrePowerUp = false;
@@ -1548,46 +1553,45 @@ void tas2557_clear_firmware(struct TFirmware *pFirmware)
 static int tas2557_load_calibration(struct tas2557_priv *pTAS2557,	char *pFileName)
 {
 	int nResult = 0;
-/*
-*	int nFile;
-*	mm_segment_t fs;
-*	unsigned char pBuffer[1000];
-*	int nSize = 0;
-*
-*	dev_dbg(pTAS2557->dev, "%s:\n", __func__);
-*
-*	fs = get_fs();
-*	set_fs(KERNEL_DS);
-*	nFile = sys_open(pFileName, O_RDONLY, 0);
-*
-*	dev_info(pTAS2557->dev, "TAS2557 calibration file = %s, handle = %d\n",
-*		pFileName, nFile);
-*
-*	if (nFile >= 0) {
-*		nSize = sys_read(nFile, pBuffer, 1000);
-*		sys_close(nFile);
-*	} else {
-*		dev_err(pTAS2557->dev, "TAS2557 cannot open calibration file: %s\n",
-*			pFileName);
-*	}
-*
-*	set_fs(fs);
-*
-*	if (!nSize)
-*		goto end;
-*
-*	tas2557_clear_firmware(pTAS2557->mpCalFirmware);
-*	dev_info(pTAS2557->dev, "TAS2557 calibration file size = %d\n", nSize);
-*	nResult = fw_parse(pTAS2557, pTAS2557->mpCalFirmware, pBuffer, nSize);
-*
-*	if (nResult)
-*		dev_err(pTAS2557->dev, "TAS2557 calibration file is corrupt\n");
-*	else
-*		dev_info(pTAS2557->dev, "TAS2557 calibration: %d calibrations\n",
-*			pTAS2557->mpCalFirmware->mnCalibrations);
-*
-*end:
-**/
+
+	int nFile;
+	mm_segment_t fs;
+	unsigned char pBuffer[1000];
+	int nSize = 0;
+
+	dev_dbg(pTAS2557->dev, "%s:\n", __func__);
+
+	fs = get_fs();
+	set_fs(KERNEL_DS);
+	nFile = sys_open(pFileName, O_RDONLY, 0);
+
+	dev_info(pTAS2557->dev, "TAS2557 calibration file = %s, handle = %d\n",
+		pFileName, nFile);
+
+	if (nFile >= 0) {
+		nSize = sys_read(nFile, pBuffer, 1000);
+		sys_close(nFile);
+	} else {
+		dev_err(pTAS2557->dev, "TAS2557 cannot open calibration file: %s\n",
+			pFileName);
+	}
+
+	set_fs(fs);
+
+	if (!nSize)
+		goto end;
+
+	tas2557_clear_firmware(pTAS2557->mpCalFirmware);
+	dev_info(pTAS2557->dev, "TAS2557 calibration file size = %d\n", nSize);
+	nResult = fw_parse(pTAS2557, pTAS2557->mpCalFirmware, pBuffer, nSize);
+
+	if (nResult)
+		dev_err(pTAS2557->dev, "TAS2557 calibration file is corrupt\n");
+	else
+		dev_info(pTAS2557->dev, "TAS2557 calibration: %d calibrations\n",
+			pTAS2557->mpCalFirmware->mnCalibrations);
+end:
+
 	return nResult;
 }
 
