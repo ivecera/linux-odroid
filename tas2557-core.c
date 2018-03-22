@@ -441,6 +441,7 @@ prog_coefficient:
 	}
 end:
 
+	pTAS2557->mnNewConfiguration = pTAS2557->mnCurrentConfiguration;
 	return nResult;
 }
 
