@@ -68,14 +68,15 @@ extern int yydebug;
     DT_BITS = 269,                 /* DT_BITS  */
     DT_DEL_PROP = 270,             /* DT_DEL_PROP  */
     DT_DEL_NODE = 271,             /* DT_DEL_NODE  */
-    DT_PROPNODENAME = 272,         /* DT_PROPNODENAME  */
-    DT_LITERAL = 273,              /* DT_LITERAL  */
-    DT_CHAR_LITERAL = 274,         /* DT_CHAR_LITERAL  */
-    DT_BYTE = 275,                 /* DT_BYTE  */
-    DT_STRING = 276,               /* DT_STRING  */
-    DT_LABEL = 277,                /* DT_LABEL  */
-    DT_REF = 278,                  /* DT_REF  */
-    DT_INCBIN = 279                /* DT_INCBIN  */
+    DT_OMIT_NO_REF = 272,          /* DT_OMIT_NO_REF  */
+    DT_PROPNODENAME = 273,         /* DT_PROPNODENAME  */
+    DT_LITERAL = 274,              /* DT_LITERAL  */
+    DT_CHAR_LITERAL = 275,         /* DT_CHAR_LITERAL  */
+    DT_BYTE = 276,                 /* DT_BYTE  */
+    DT_STRING = 277,               /* DT_STRING  */
+    DT_LABEL = 278,                /* DT_LABEL  */
+    DT_REF = 279,                  /* DT_REF  */
+    DT_INCBIN = 280                /* DT_INCBIN  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
