@@ -519,7 +519,7 @@ int tas2557_enable(struct tas2557_priv *pTAS2557, bool bEnable)
 
 			pTAS2557->mbPowerUp = true;
 
-			tas2557_get_die_temperature(pTAS2770, &nValue);
+			tas2557_get_die_temperature(pTAS2557, &nValue);
 			if(nValue == 0x80000000)
 			{
 				dev_err(pTAS2557->dev, "%s, thermal sensor is wrong, mute output\n", __func__);
