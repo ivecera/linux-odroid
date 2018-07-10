@@ -486,7 +486,7 @@ int tas2557_enable(struct tas2557_priv *pTAS2557, bool bEnable)
 	if (bEnable) {
 		if (!pTAS2557->mbPowerUp) {
 			if (!pTAS2557->mbCalibrationLoaded) {
-				tas2557_set_calibration(pTAS2559, 0xFF);
+				tas2557_set_calibration(pTAS2557, 0xFF);
 				pTAS2557->mbCalibrationLoaded = true;
 			}
 
@@ -1768,7 +1768,7 @@ void tas2557_fw_ready(const struct firmware *pFW, void *pContext)
 	nResult = tas2557_set_program(pTAS2557, nProgram, -1);
 
 end:
-
+	;
 #ifdef CONFIG_TAS2557_CODEC
 	mutex_unlock(&pTAS2557->codec_lock);
 #endif
