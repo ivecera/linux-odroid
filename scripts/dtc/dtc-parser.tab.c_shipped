@@ -660,13 +660,13 @@ static const yytype_int16 yyrline[] =
 {
        0,   110,   110,   118,   122,   129,   130,   140,   143,   150,
      154,   162,   166,   170,   181,   192,   211,   223,   238,   246,
-     249,   256,   260,   264,   268,   276,   280,   284,   288,   292,
-     308,   318,   326,   329,   333,   340,   356,   361,   380,   394,
-     401,   402,   403,   410,   414,   415,   419,   420,   424,   425,
-     429,   430,   434,   435,   439,   440,   444,   445,   446,   450,
-     451,   452,   453,   454,   458,   459,   460,   464,   465,   466,
-     470,   471,   480,   489,   493,   494,   495,   496,   501,   504,
-     508,   516,   519,   523,   531,   535,   539,   543
+     249,   256,   260,   264,   268,   276,   280,   284,   288,   293,
+     309,   319,   327,   330,   334,   341,   362,   367,   386,   400,
+     407,   408,   409,   416,   420,   421,   425,   426,   430,   431,
+     435,   436,   440,   441,   445,   446,   450,   451,   452,   456,
+     457,   458,   459,   460,   464,   465,   466,   470,   471,   472,
+     476,   477,   486,   495,   499,   500,   501,   502,   507,   510,
+     514,   522,   525,   529,   537,   541,   545,   549
 };
 #endif
 
@@ -1641,6 +1641,7 @@ yyreduce:
 
   case 28: /* propdata: propdataprefix DT_REF  */
                 {
+			(yyvsp[-1].data) = data_add_marker((yyvsp[-1].data), TYPE_STRING, (yyvsp[0].labelref));
 			(yyval.data) = data_add_marker((yyvsp[-1].data), REF_PATH, (yyvsp[0].labelref));
 		}
     break;
@@ -1702,24 +1703,29 @@ yyreduce:
   case 35: /* arrayprefix: DT_BITS DT_LITERAL '<'  */
                 {
 			unsigned long long bits;
+			enum markertype type = TYPE_UINT32;
 
 			bits = (yyvsp[-1].integer);
 
-			if ((bits !=  8) && (bits != 16) &&
-			    (bits != 32) && (bits != 64)) {
+			switch (bits) {
+			case 8: type = TYPE_UINT8; break;
+			case 16: type = TYPE_UINT16; break;
+			case 32: type = TYPE_UINT32; break;
+			case 64: type = TYPE_UINT64; break;
+			default:
 				ERROR(&(yylsp[-1]), "Array elements must be"
 				      " 8, 16, 32 or 64-bits");
 				bits = 32;
 			}
 
-			(yyval.array).data = empty_data;
+			(yyval.array).data = data_add_marker(empty_data, type, NULL);
 			(yyval.array).bits = bits;
 		}
     break;
 
   case 36: /* arrayprefix: '<'  */
                 {
-			(yyval.array).data = empty_data;
+			(yyval.array).data = data_add_marker(empty_data, TYPE_UINT32, NULL);
 			(yyval.array).bits = 32;
 		}
     break;
@@ -1877,7 +1883,7 @@ yyreduce:
 
   case 78: /* bytestring: %empty  */
                 {
-			(yyval.data) = empty_data;
+			(yyval.data) = data_add_marker(empty_data, TYPE_UINT8, NULL);
 		}
     break;
 
