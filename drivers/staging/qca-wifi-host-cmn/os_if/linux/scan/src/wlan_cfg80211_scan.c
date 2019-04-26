@@ -441,7 +441,7 @@ int wlan_cfg80211_sched_scan_start(struct wlan_objmgr_vdev *vdev,
 		int len = 0;
 		bool ap_or_go_present = wlan_cfg80211_is_ap_go_present(psoc);
 
-		buff_len = (request->n_channels * 5) + 1;
+		buff_len = (NUM_24GHZ_CHANNELS + NUM_5GHZ_CHANNELS) * 5 + 1;
 		chl = qdf_mem_malloc(buff_len);
 		if (!chl) {
 			ret = -ENOMEM;
