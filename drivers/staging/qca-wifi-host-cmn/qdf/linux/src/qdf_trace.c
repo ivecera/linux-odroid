@@ -1494,7 +1494,7 @@ uint8_t qdf_get_rate_limit_by_type(uint8_t type)
  *
  * Return: String based on pkt type
  */
-static
+static __maybe_unused
 uint8_t *qdf_get_pkt_type_string(uint8_t type, uint8_t subtype)
 {
 	switch (subtype) {
@@ -1552,7 +1552,7 @@ uint8_t *qdf_get_pkt_type_string(uint8_t type, uint8_t subtype)
  *
  * Return: String based on pkt status
  */
-static
+static __maybe_unused
 uint8_t *qdf_get_pkt_status_string(uint8_t status)
 {
 	switch (status) {
@@ -2079,7 +2079,7 @@ void qdf_dp_display_proto_pkt_always(struct qdf_dp_trace_record_s *record,
 {
 	int loc;
 	char prepend_str[QDF_DP_TRACE_PREPEND_STR_SIZE];
-	struct qdf_dp_trace_proto_buf *buf =
+	struct qdf_dp_trace_proto_buf *buf __maybe_unused =
 		(struct qdf_dp_trace_proto_buf *)record->data;
 
 	qdf_mem_zero(prepend_str, sizeof(prepend_str));
