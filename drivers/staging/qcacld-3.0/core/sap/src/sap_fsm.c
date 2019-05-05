@@ -2796,9 +2796,7 @@ QDF_STATUS sap_fsm(struct sap_context *sap_ctx, ptWLAN_SAPEvent sap_event)
 	 * state var that keeps track of state machine
 	 */
 	enum sap_fsm_state state_var = sap_ctx->fsm_state;
-#ifdef WLAN_DEBUG
 	uint32_t msg = sap_event->event; /* State machine input event message */
-#endif
 	QDF_STATUS qdf_status = QDF_STATUS_E_FAILURE;
 	tHalHandle hal = CDS_GET_HAL_CB();
 	tpAniSirGlobal mac_ctx;
