@@ -1868,11 +1868,11 @@ yyreduce:
     break;
 
   case 67: /* integer_shift: integer_shift DT_LSHIFT integer_add  */
-                                              { (yyval.integer) = (yyvsp[-2].integer) << (yyvsp[0].integer); }
+                                              { (yyval.integer) = ((yyvsp[0].integer) < 64) ? ((yyvsp[-2].integer) << (yyvsp[0].integer)) : 0; }
     break;
 
   case 68: /* integer_shift: integer_shift DT_RSHIFT integer_add  */
-                                              { (yyval.integer) = (yyvsp[-2].integer) >> (yyvsp[0].integer); }
+                                              { (yyval.integer) = ((yyvsp[0].integer) < 64) ? ((yyvsp[-2].integer) >> (yyvsp[0].integer)) : 0; }
     break;
 
   case 70: /* integer_add: integer_add '+' integer_mul  */
