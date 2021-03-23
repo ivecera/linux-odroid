@@ -2,6 +2,8 @@
  *  linux/fs/proc/base.c
  *
  *  Copyright (C) 1991, 1992 Linus Torvalds
+ *  Copyright (C) 2020 XiaoMi, Inc.
+ *  Copyright (C) 2021 Ivan Vecera <ivan@cera.cz>
  *
  *  proc base directory handling functions
  *
@@ -88,6 +90,9 @@
 #include <linux/flex_array.h>
 #include <linux/posix-timers.h>
 #include <linux/cpufreq_times.h>
+#ifdef CONFIG_TASK_DELAY_ACCT
+#include <linux/delayacct.h>
+#endif
 #ifdef CONFIG_HARDWALL
 #include <asm/hardwall.h>
 #endif
@@ -800,6 +805,43 @@ static const struct file_operations proc_single_file_operations = {
 	.release	= single_release,
 };
 
+#ifdef CONFIG_TASK_DELAY_ACCT
+
+struct delay_struct {
+	u64 version;
+	u64 blkio_delay;      /* wait for sync block io completion */
+	u64 swapin_delay;     /* wait for swapin block io completion */
+	u64 freepages_delay;  /* wait for memory reclaim */
+	u64 cpu_runtime;
+	u64 cpu_run_delay;
+};
+
+/*
+ * Provides /proc/PID/delay
+ */
+static int proc_pid_delay(struct seq_file *m, struct pid_namespace *ns,
+			  struct pid *pid, struct task_struct *task)
+{
+	struct delay_struct d = { .version = 1 };
+	unsigned long flags;
+
+	spin_lock_irqsave(&task->delays->lock, flags);
+
+	d.blkio_delay = task->delays->blkio_delay >> 20;
+	d.swapin_delay = task->delays->swapin_delay >> 20;
+	d.freepages_delay = task->delays->freepages_delay >> 20;
+
+	spin_unlock_irqrestore(&task->delays->lock, flags);
+
+	if (likely(sched_info_on())) {
+		d.cpu_runtime = task->se.sum_exec_runtime >> 20;
+		d.cpu_run_delay = task->sched_info.run_delay >> 20;
+	}
+
+	return seq_write(m, &d, sizeof(d));
+}
+
+#endif
 
 struct mm_struct *proc_mem_open(struct inode *inode, unsigned int mode)
 {
@@ -3602,6 +3644,9 @@ static const struct pid_entry tid_base_stuff[] = {
 #endif
 #ifdef CONFIG_SCHED_INFO
 	ONE("schedstat", S_IRUGO, proc_pid_schedstat),
+#endif
+#ifdef CONFIG_TASK_DELAY_ACCT
+	ONE("delay",      S_IRUGO, proc_pid_delay),
 #endif
 #ifdef CONFIG_LATENCYTOP
 	REG("latency",  S_IRUGO, proc_lstats_operations),
