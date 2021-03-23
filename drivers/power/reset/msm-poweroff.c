@@ -43,10 +43,26 @@
 #define SCM_IO_DISABLE_PMIC_ARBITER	1
 #define SCM_IO_DEASSERT_PS_HOLD		2
 #define SCM_WDOG_DEBUG_BOOT_PART	0x9
-#define SCM_DLOAD_FULLDUMP		0X10
+
+#ifdef CONFIG_MACH_XIAOMI
+
+#if defined(CONFIG_MACH_XIAOMI_F3B) || defined(CONFIG_MACH_XIAOMI_F3M)
+#define SCM_DLOAD_FULLDUMP		0x10
+#define SCM_DLOAD_MINIDUMP		0x40
+#else
+#define SCM_DLOAD_FULLDUMP		0x40
+#define SCM_DLOAD_MINIDUMP		0x80
+#endif
+
+#else
+
+#define SCM_DLOAD_FULLDUMP		0x10
+#define SCM_DLOAD_MINIDUMP		0x20
+
+#endif
+
 #define SCM_EDLOAD_MODE			0X01
 #define SCM_DLOAD_CMD			0x10
-#define SCM_DLOAD_MINIDUMP		0X20
 #define SCM_DLOAD_BOTHDUMPS	(SCM_DLOAD_MINIDUMP | SCM_DLOAD_FULLDUMP)
 
 static int restart_mode;
@@ -77,7 +93,11 @@ static const int download_mode;
 #endif
 
 static int in_panic;
+#ifdef CONFIG_MACH_XIAOMI
+static int dload_type = SCM_DLOAD_BOTHDUMPS;
+#else
 static int dload_type = SCM_DLOAD_FULLDUMP;
+#endif
 static void *dload_mode_addr;
 static bool dload_mode_enabled;
 static void *emergency_dload_mode_addr;
