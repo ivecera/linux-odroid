@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2013-2015,2017, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2020 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -239,6 +240,12 @@ static void cpuboost_input_event(struct input_handle *handle,
 	queue_work(cpu_boost_wq, &input_boost_work);
 	last_input_time = ktime_to_us(ktime_get());
 }
+
+void cpufreq_touch_irq_boost(void)
+{
+	cpuboost_input_event(NULL, 0, 0, 0);
+}
+EXPORT_SYMBOL(cpufreq_touch_irq_boost);
 
 static int cpuboost_input_connect(struct input_handler *handler,
 		struct input_dev *dev, const struct input_device_id *id)

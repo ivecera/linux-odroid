@@ -677,6 +677,7 @@ ssize_t cpufreq_show_cpus(const struct cpumask *mask, char *buf);
 #ifdef CONFIG_CPU_FREQ
 int cpufreq_boost_trigger_state(int state);
 int cpufreq_boost_enabled(void);
+void cpufreq_touch_irq_boost(void);
 int cpufreq_enable_boost_support(void);
 bool policy_has_boost_freq(struct cpufreq_policy *policy);
 
@@ -909,7 +910,9 @@ static inline int cpufreq_boost_enabled(void)
 {
 	return 0;
 }
-
+static inline void cpufreq_touch_irq_boost(void)
+{
+}
 static inline int cpufreq_enable_boost_support(void)
 {
 	return -EINVAL;
