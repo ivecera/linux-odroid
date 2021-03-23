@@ -429,6 +429,7 @@ extern bool events_check_enabled;
 extern unsigned int pm_wakeup_irq;
 
 extern bool pm_wakeup_pending(void);
+extern bool pm_suspend_aborted(void);
 extern void pm_system_wakeup(void);
 extern void pm_wakeup_clear(void);
 extern void pm_system_irq_wakeup(unsigned int irq_number);
@@ -480,6 +481,7 @@ static inline int unregister_pm_notifier(struct notifier_block *nb)
 #define pm_notifier(fn, pri)	do { (void)(fn); } while (0)
 
 static inline bool pm_wakeup_pending(void) { return false; }
+static inline bool pm_suspend_aborted(void) { return false; }
 static inline void pm_system_wakeup(void) {}
 static inline void pm_wakeup_clear(void) {}
 static inline void pm_system_irq_wakeup(unsigned int irq_number) {}
