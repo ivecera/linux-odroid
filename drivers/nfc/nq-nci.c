@@ -28,6 +28,7 @@
 #ifdef CONFIG_COMPAT
 #include <linux/compat.h>
 #endif
+#include <linux/jiffies.h>
 
 struct nqx_platform_data {
 	unsigned int irq_gpio;
@@ -50,6 +51,7 @@ MODULE_DEVICE_TABLE(of, msm_match_table);
 #define MAX_BUFFER_SIZE			(320)
 #define WAKEUP_SRC_TIMEOUT		(2000)
 #define MAX_RETRY_COUNT			3
+#define MAX_IRQ_WAIT_TIME		(90)	//in ms
 
 struct nqx_dev {
 	wait_queue_head_t	read_wq;
@@ -155,7 +157,8 @@ static int is_data_available_for_read(struct nqx_dev *nqx_dev)
 	int ret;
 
 	nqx_enable_irq(nqx_dev);
-	ret = wait_event_interruptible(nqx_dev->read_wq, !nqx_dev->irq_enabled);
+	ret = wait_event_interruptible_timeout(nqx_dev->read_wq,
+		!nqx_dev->irq_enabled, msecs_to_jiffies(MAX_IRQ_WAIT_TIME));
 	return ret;
 }
 
