@@ -1,5 +1,7 @@
 obj-$(CONFIG_IPA3) += ipahal/
 
+ccflags-y += -I$(src)
+
 ifdef CONFIG_X86
 ccflags-y += -DIPA_EMULATION_COMPILE=1
 else
