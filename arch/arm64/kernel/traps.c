@@ -322,6 +322,10 @@ void die(const char *str, struct pt_regs *regs, int err)
 	unsigned long flags = oops_begin();
 	int ret;
 
+	/* Try to do emergency sync with 2 secs timeout */
+	if (!in_atomic())
+		emergency_sync_wait(2000);
+
 	if (!user_mode(regs))
 		bug_type = report_bug(regs->pc, regs);
 	if (bug_type != BUG_TRAP_TYPE_NONE && !strlen(str))

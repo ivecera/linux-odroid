@@ -142,6 +142,10 @@ void panic(const char *fmt, ...)
 
 	trace_kernel_panic(0);
 
+	/* Try to do emergency sync with 2 secs timeout */
+	if (!in_atomic())
+		emergency_sync_wait(2000);
+
 	/*
 	 * Disable local interrupts. This will prevent panic_smp_self_stop
 	 * from deadlocking the first cpu that invokes the panic, since

@@ -2627,6 +2627,7 @@ static inline ssize_t generic_write_sync(struct kiocb *iocb, ssize_t count)
 }
 
 extern void emergency_sync(void);
+extern void emergency_sync_wait(unsigned long timeout);
 extern void emergency_remount(void);
 #ifdef CONFIG_BLOCK
 extern sector_t bmap(struct inode *, sector_t);
