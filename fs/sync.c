@@ -119,7 +119,7 @@ SYSCALL_DEFINE0(sync)
 	return 0;
 }
 
-static void do_sync_work(struct work_struct *work)
+static void __do_sync_work(struct work_struct *work)
 {
 	int nowait = 0;
 
@@ -137,6 +137,12 @@ static void do_sync_work(struct work_struct *work)
 	kfree(work);
 }
 
+static void do_sync_work(struct work_struct *work)
+{
+	__do_sync_work(work);
+	kfree(work);
+}
+
 void emergency_sync(void)
 {
 	struct work_struct *work;
@@ -146,6 +152,36 @@ void emergency_sync(void)
 		INIT_WORK(work, do_sync_work);
 		schedule_work(work);
 	}
+}
+
+struct sync_wait {
+	struct work_struct work;
+	struct completion *compl;
+};
+
+static void do_sync_wait_work(struct work_struct *work)
+{
+	struct sync_wait *sw = container_of(work, struct sync_wait, work);
+
+	__do_sync_work(work);
+	complete(sw->compl);
+}
+
+
+void emergency_sync_wait(unsigned long timeout)
+{
+	DECLARE_COMPLETION_ONSTACK(sync_compl);
+	struct sync_wait sw = {
+		.compl = &sync_compl,
+	};
+
+	INIT_WORK_ONSTACK(&sw.work, do_sync_wait_work);
+	schedule_work(&sw.work);
+
+	timeout = msecs_to_jiffies(timeout);
+	timeout = wait_for_completion_timeout(&sync_compl, timeout);
+
+	pr_emerg("Emergency Sync %s\n", !timeout ? "timeout" : "complete");
 }
 
 /*
