@@ -1,6 +1,8 @@
+ifneq ($(CONFIG_MACH_XIAOMI),y)
 dtb-$(CONFIG_ARCH_QCOM)	+= apq8016-sbc.dtb msm8916-mtp.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= msm8996-mtp.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= apq8096-db820c.dtb
+endif
 
 ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
 	dtbo-$(CONFIG_ARCH_SDM845) += \
@@ -116,6 +118,31 @@ dtb-$(CONFIG_ARCH_SDM845) += sdm845-sim.dtb \
 endif
 
 ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
+
+ifeq ($(CONFIG_MACH_XIAOMI),y)
+	dtbo-$(CONFIG_MACH_XIAOMI_E2) += \
+		sirius-sdm670-overlay.dtbo \
+		sirius-sdm710-overlay.dtbo
+
+	dtbo-$(CONFIG_MACH_XIAOMI_F2) += \
+		grus-sdm710-overlay.dtbo \
+		grus-sdm712-overlay.dtbo
+
+	dtbo-$(CONFIG_MACH_XIAOMI_F3B) += \
+		pyxis-sdm710-overlay.dtbo
+
+	dtbo-$(CONFIG_MACH_XIAOMI_F3M) += \
+		vela-sdm710-overlay.dtbo
+
+grus-sdm710-overlay.dtbo-base := sdm710.dtb
+grus-sdm712-overlay.dtbo-base := sdm710.dtb
+pyxis-sdm710-overlay.dtbo-base := sdm710.dtb
+sirius-sdm670-overlay.dtbo-base := sdm670.dtb
+sirius-sdm710-overlay.dtbo-base := sdm710.dtb
+vela-sdm710-overlay.dtbo-base := sdm710.dtb
+
+else # CONFIG_MACH_XIAOMI
+
 	dtbo-$(CONFIG_ARCH_SDM670) += \
 		sdm670-cdp-overlay.dtbo \
 		sdm670-mtp-overlay.dtbo \
@@ -191,6 +218,12 @@ ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
 		sxr1130-usbc-pm660a-mtp-overlay.dtbo \
 		sxr1130-qrd-overlay.dtbo \
 		sxr1130-svr-overlay.dtbo
+		sirius-sdm710-overlay.dtbo \
+		sirius-sdm670-overlay.dtbo \
+		grus-sdm710-overlay.dtbo \
+		grus-sdm712-overlay.dtbo \
+		pyxis-sdm710-overlay.dtbo \
+		vela-sdm710-overlay.dtbo
 
 sdm670-cdp-overlay.dtbo-base := sdm670.dtb
 sdm670-mtp-overlay.dtbo-base := sdm670.dtb
@@ -267,7 +300,28 @@ sxr1130-usbc-pm660a-mtp-overlay.dtbo-base := sxr1130.dtb
 sxr1130-qrd-overlay.dtbo-base := sxr1130.dtb
 sxr1130-svr-overlay.dtbo-base := sxr1130.dtb
 
-else
+endif # CONFIG_MACH_XIAOMI
+
+else # CONFIG_BUILD_ARM64_DT_OVERLAY
+
+ifeq ($(CONFIG_MACH_XIAOMI),y)
+
+dtb-$(CONFIG_MACH_XIAOMI_F2) += \
+	grus-sdm710.dtb \
+	grus-sdm712.dtb
+
+dtb-$(CONFIG_MACH_XIAOMI_F3B) += \
+	pyxis-sdm710.dtb
+
+dtb-$(CONFIG_MACH_XIAOMI_E2) += \
+	sirius-sdm670.dtb \
+	sirius-sdm710.dtb
+
+dtb-$(CONFIG_MACH_XIAOMI_F3M) += \
+	vela-sdm710.dtb
+
+else # CONFIG_MACH_XIAOMI
+
 dtb-$(CONFIG_ARCH_SDM670) += sdm670-rumi.dtb \
 	sdm670-mtp.dtb \
 	sdm670-cdp.dtb \
@@ -339,7 +393,10 @@ dtb-$(CONFIG_ARCH_SDM670) += sdm670-rumi.dtb \
 	sxr1130-usbc-pm660a-mtp.dtb \
 	sxr1130-qrd.dtb \
 	sxr1130-svr.dtb
-endif
+
+endif # CONFIG_MACH_XIAOMI
+
+endif # CONFIG_BUILD_ARM64_DT_OVERLAY
 
 ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
 dtbo-$(CONFIG_ARCH_MSM8940) += msm8940-mtp-overlay.dtbo
