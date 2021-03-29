@@ -1206,10 +1206,8 @@ static int bq2591x_charger_probe(struct i2c_client *client,
 	int ret;
 
 	bq = devm_kzalloc(&client->dev, sizeof(struct bq2591x), GFP_KERNEL);
-	if (!bq) {
-		pr_err("out of memory\n");
+	if (!bq)
 		return -ENOMEM;
-	}
 
 	bq->dev = &client->dev;
 	bq->client = client;
