@@ -1344,4 +1344,4 @@ static struct i2c_driver bq2591x_charger_driver = {
 module_i2c_driver(bq2591x_charger_driver);
 
 MODULE_DESCRIPTION("TI BQ2591x Charger Driver");
-MODULE_LICENSE("GPL2");
+MODULE_LICENSE("GPL v2");
