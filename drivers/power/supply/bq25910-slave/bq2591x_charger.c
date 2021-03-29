@@ -1130,19 +1130,19 @@ static void bq2591x_fault_handler(struct bq2591x *bq)
 	bq->prev_fault_flag = bq->reg_fault_flag;
 
 	if (bq->reg_fault_flag & BQ2591X_VBUS_OVP_FLAG_MASK)
-		pr_info("VBus OVP fault occured, current stat:%d",
+		pr_info("VBus OVP fault occurred, current stat:%d",
 			bq->reg_fault & BQ2591X_VBUS_OVP_STAT_MASK);
 
 	if (bq->reg_fault_flag & BQ2591X_TSHUT_FLAG_MASK)
-		pr_info("Thermal shutdown occured, current stat:%d",
+		pr_info("Thermal shutdown occurred, current stat:%d",
 			bq->reg_fault & BQ2591X_TSHUT_STAT_MASK);
 
 	if (bq->reg_fault_flag & BQ2591X_BATOVP_FLAG_MASK)
-		pr_info("Battery OVP fault occured, current stat:%d",
+		pr_info("Battery OVP fault occurred, current stat:%d",
 			bq->reg_fault & BQ2591X_BATOVP_STAT_MASK);
 
 	if (bq->reg_fault_flag & BQ2591X_CFLY_FLAG_MASK)
-		pr_info("CFLY fault occured, current stat:%d",
+		pr_info("CFLY fault occurred, current stat:%d",
 			bq->reg_fault & BQ2591X_CFLY_STAT_MASK);
 
 	if (bq->reg_fault_flag & BQ2591X_TMR_FLAG_MASK)
@@ -1150,7 +1150,7 @@ static void bq2591x_fault_handler(struct bq2591x *bq)
 			bq->reg_fault & BQ2591X_TMR_STAT_MASK);
 
 	if (bq->reg_fault_flag & BQ2591X_CAP_COND_FLAG_MASK)
-		pr_info("CAP conditon fault occured, current stat:%d",
+		pr_info("CAP conditon fault occurred, current stat:%d",
 			bq->reg_fault & BQ2591X_CAP_COND_STAT_MASK);
 }
 
