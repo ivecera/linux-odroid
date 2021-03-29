@@ -1318,7 +1318,7 @@ static void bq2591x_charger_shutdown(struct i2c_client *client)
 	pr_info("shutdown\n");
 }
 
-static struct of_device_id bq2591x_charger_match_table[] = {
+static const struct of_device_id bq2591x_charger_match_table[] = {
 	{ .compatible = "ti,smbq2591x" },
 	{ },
 };
