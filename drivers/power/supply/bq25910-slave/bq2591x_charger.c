@@ -11,7 +11,7 @@
  * IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  */
-#define pr_fmt(fmt) "BQ2591X %s: " fmt, __func__
+#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #include <linux/gpio.h>
 #include <linux/i2c.h>
@@ -30,11 +30,6 @@
 #include <linux/debugfs.h>
 #include <linux/bitops.h>
 #include "bq25910_reg.h"
-
-#ifdef pr_debug
-#undef pr_debug
-#define pr_debug pr_err
-#endif
 
 enum bq2591x_part_no {
 	BQ25910 = 0x01,
@@ -122,7 +117,8 @@ static int __bq2591x_read_reg(struct bq2591x *bq, u8 reg, u8 *data)
 
 	ret = i2c_smbus_read_byte_data(bq->client, reg);
 	if (ret < 0) {
-		pr_err("i2c read fail: can't read from reg 0x%02X\n", reg);
+		dev_err(bq->dev, "i2c read fail: can't read from reg 0x%02X\n",
+			reg);
 		pm_relax(bq->dev);
 		return ret;
 	}
@@ -142,7 +138,7 @@ static int __bq2591x_write_reg(struct bq2591x *bq, int reg, u8 val)
 
 	ret = i2c_smbus_write_byte_data(bq->client, reg, val);
 	if (ret < 0) {
-		pr_err("i2c write fail: can't write 0x%02X to reg 0x%02X: %d\n",
+		dev_err(bq->dev, "i2c write fail: can't write 0x%02X to reg 0x%02X: %d\n",
 		       val, reg, ret);
 		pm_relax(bq->dev);
 		return ret;
@@ -181,7 +177,7 @@ static int bq2591x_write_byte(struct bq2591x *bq, u8 reg, u8 data)
 	mutex_unlock(&bq->i2c_rw_lock);
 
 	if (ret)
-		pr_err("Failed: reg=%02X, ret=%d\n", reg, ret);
+		dev_err(bq->dev, "Failed: reg=%02X, ret=%d\n", reg, ret);
 
 	return ret;
 }
@@ -198,7 +194,7 @@ static int bq2591x_update_bits(struct bq2591x *bq, u8 reg,
 	mutex_lock(&bq->i2c_rw_lock);
 	ret = __bq2591x_read_reg(bq, reg, &tmp);
 	if (ret) {
-		pr_err("Failed: reg=%02X, ret=%d\n", reg, ret);
+		dev_err(bq->dev, "Failed: reg=%02X, ret=%d\n", reg, ret);
 		goto out;
 	}
 
@@ -207,7 +203,7 @@ static int bq2591x_update_bits(struct bq2591x *bq, u8 reg,
 
 	ret = __bq2591x_write_reg(bq, reg, tmp);
 	if (ret)
-		pr_err("Failed: reg=%02X, ret=%d\n", reg, ret);
+		dev_err(bq->dev, "Failed: reg=%02X, ret=%d\n", reg, ret);
 
 out:
 	mutex_unlock(&bq->i2c_rw_lock);
@@ -504,7 +500,7 @@ static void create_debugfs_entries(struct bq2591x *bq)
 {
 	bq->debug_root = debugfs_create_dir("bq2591x", NULL);
 	if (!bq->debug_root)
-		pr_err("Failed to create debug dir\n");
+		dev_err(bq->dev, "Failed to create debug dir\n");
 
 	if (bq->debug_root) {
 		debugfs_create_file("registers", 0444, bq->debug_root,
@@ -534,7 +530,7 @@ static int bq2591x_usb_suspend(struct bq2591x *bq, bool suspend)
 		rc = bq2591x_enable_charger(bq);
 
 	if (rc) {
-		pr_err("Couldn't %s rc = %d\n",
+		dev_err(bq->dev, "Couldn't %s rc = %d\n",
 		       suspend ? "suspend" : "resume",  rc);
 		return rc;
 	}
@@ -549,7 +545,7 @@ int bq2591x_get_charging_status(struct bq2591x *bq)
 
 	ret = bq2591x_read_byte(bq, &val, BQ2591X_REG_07);
 	if (ret < 0) {
-		pr_err("Failed to read register 0x0b:%d\n", ret);
+		dev_err(bq->dev, "Failed to read register 0x0b:%d\n", ret);
 		return ret;
 	}
 
@@ -574,11 +570,12 @@ static int bq2591x_get_prop_charge_type(struct bq2591x *bq)
 
 	ret = bq2591x_read_byte(bq, &val, BQ2591X_REG_07);
 	if (ret) {
-		pr_err("failed to read status register, ret:%d\n", ret);
+		dev_err(bq->dev, "failed to read status register, ret:%d\n",
+			ret);
 		return POWER_SUPPLY_CHARGE_TYPE_UNKNOWN;
 	}
 
-	pr_debug("Status Reg = 0x%02X\n", val);
+	dev_dbg(bq->dev, "Status Reg = 0x%02X\n", val);
 
 	val = (val & BQ2591X_CHRG_STAT_MASK) >> BQ2591X_CHRG_STAT_SHIFT;
 
@@ -601,7 +598,7 @@ static bool bq2591x_is_usb_present(struct bq2591x *bq)
 		bq->usb_psy = power_supply_get_by_name("usb");
 
 	if (!bq->usb_psy) {
-		pr_err("USB psy not found\n");
+		dev_err(bq->dev, "USB psy not found\n");
 		return false;
 	}
 
@@ -609,7 +606,7 @@ static bool bq2591x_is_usb_present(struct bq2591x *bq)
 				       POWER_SUPPLY_PROP_ONLINE, &val);
 
 	if (rc < 0) {
-		pr_err("Failed to get present property rc=%d\n", rc);
+		dev_err(bq->dev, "Failed to get present property rc=%d\n", rc);
 		return false;
 	}
 
@@ -626,7 +623,8 @@ static bool bq2591x_is_input_current_limited(struct bq2591x *bq)
 
 	rc = bq2591x_read_byte(bq, &status, BQ2591X_REG_07);
 	if (rc) {
-		pr_err("Failed to read INDPM STATUS register:%d\n", rc);
+		dev_err(bq->dev, "Failed to read INDPM STATUS register:%d\n",
+			rc);
 		return false;
 	}
 
@@ -644,11 +642,11 @@ static void bq2591x_icl_softstart_workfunc(struct work_struct *work)
 		if (bq->usb_psy_ma < icl_set) {
 			bq2591x_set_input_current_limit(bq, bq->usb_psy_ma);
 		} else if (bq->usb_psy_ma - icl_set < BQ2591X_IINLIM_LSB) {
-			pr_debug("icl softstart done!\n");
+			dev_dbg(bq->dev, "icl softstart done!\n");
 			return;/*softstart done*/
 		} else {
 			icl_set = icl_set + BQ2591X_IINLIM_LSB;
-			pr_debug("icl softstart set:%d\n", icl_set);
+			dev_dbg(bq->dev, "icl softstart set:%d\n", icl_set);
 			bq2591x_set_input_current_limit(bq, icl_set);
 			schedule_delayed_work(&bq->icl_softstart_work, HZ / 10);
 		}
@@ -667,7 +665,7 @@ static int bq2591x_set_usb_chg_current(struct bq2591x *bq, int current_ma)
 		rc = bq2591x_set_input_current_limit(bq, current_ma);
 
 	if (rc) {
-		pr_err("failed to set input current limit:%d\n", rc);
+		dev_err(bq->dev, "failed to set input current limit:%d\n", rc);
 		return rc;
 	}
 
@@ -686,11 +684,11 @@ static void bq2591x_fcc_softstart_workfunc(struct work_struct *work)
 		if (bq->fast_cc_ma < fcc_set) {
 			bq2591x_set_chargecurrent(bq, bq->fast_cc_ma);
 		} else if (bq->fast_cc_ma - fcc_set < BQ2591X_ICHG_LSB) {
-			pr_debug("fcc softstart done!\n");
+			dev_dbg(bq->dev, "fcc softstart done!\n");
 			return;/*softstart done*/
 		} else {
 			fcc_set = fcc_set + BQ2591X_ICHG_LSB;
-			pr_debug("fcc softstart set fcc:%d\n", fcc_set);
+			dev_dbg(bq->dev, "fcc softstart set fcc:%d\n", fcc_set);
 			bq2591x_set_chargecurrent(bq, fcc_set);
 			schedule_delayed_work(&bq->fcc_softstart_work, HZ / 10);
 		}
@@ -744,14 +742,14 @@ static int bq2591x_charger_set_property(struct power_supply *psy,
 
 	switch (prop) {
 	case POWER_SUPPLY_PROP_INPUT_SUSPEND:
-		pr_debug("POWER_SUPPLY_PROP_INPUT_SUSPEND:%d\n",
+		dev_dbg(bq->dev, "POWER_SUPPLY_PROP_INPUT_SUSPEND:%d\n",
 			 val->intval);
 
 		rc = bq2591x_usb_suspend(bq, val->intval);
 		break;
 
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX:
-		pr_debug("POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX:%d\n",
+		dev_dbg(bq->dev, "POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX:%d\n",
 			 val->intval);
 
 		bq->fast_cc_ma = val->intval / 1000;
@@ -759,7 +757,7 @@ static int bq2591x_charger_set_property(struct power_supply *psy,
 		break;
 
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
-		pr_debug("POWER_SUPPLY_PROP_CURRENT_MAX:%d\n",
+		dev_dbg(bq->dev, "POWER_SUPPLY_PROP_CURRENT_MAX:%d\n",
 			 val->intval);
 
 		bq->usb_psy_ma = val->intval / 1000;
@@ -768,7 +766,7 @@ static int bq2591x_charger_set_property(struct power_supply *psy,
 		break;
 
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
-		pr_debug("POWER_SUPPLY_PROP_VOLTAGE_MAX:%d\n",
+		dev_dbg(bq->dev, "POWER_SUPPLY_PROP_VOLTAGE_MAX:%d\n",
 			 val->intval);
 
 		bq->vfloat_mv = val->intval / 1000;
@@ -785,7 +783,7 @@ static int bq2591x_charger_set_property(struct power_supply *psy,
 		break;
 
 	default:
-		pr_err("unsupported prop:%d", prop);
+		dev_err(bq->dev, "unsupported prop:%d", prop);
 		return -EINVAL;
 	}
 
@@ -824,15 +822,15 @@ static int bq2591x_charger_get_property(struct power_supply *psy,
 		if (rc >= 0)
 			val->intval = !!(temp & BQ2591X_PG_STAT_MASK);
 
-		pr_debug("POWER_SUPPLY_PROP_ONLINE:%d\n", 
-			 val->intval);
+		dev_dbg(bq->dev, "POWER_SUPPLY_PROP_ONLINE:%d\n",
+			val->intval);
 		break;
 
 	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
 		/* assume it is always enabled, using SUSPEND to control charging */
 		val->intval = 1;
-		pr_debug("POWER_SUPPLY_PROP_CHARGING_ENABLED:%d\n",
-			 val->intval);
+		dev_dbg(bq->dev, "POWER_SUPPLY_PROP_CHARGING_ENABLED:%d\n",
+			val->intval);
 		break;
 
 	case POWER_SUPPLY_PROP_INPUT_SUSPEND:
@@ -840,7 +838,8 @@ static int bq2591x_charger_get_property(struct power_supply *psy,
 		if (rc >= 0)
 			val->intval = (bool)!(temp & BQ2591X_EN_CHG_MASK);
 
-		pr_debug("POWER_SUPPLY_PROP_INPUT_SUSPEND:%d\n", val->intval);
+		dev_dbg(bq->dev, "POWER_SUPPLY_PROP_INPUT_SUSPEND:%d\n",
+			val->intval);
 
 		break;
 
@@ -850,7 +849,7 @@ static int bq2591x_charger_get_property(struct power_supply *psy,
 		if (rc >= 0)
 			val->intval = itemp * 1000;
 
-		pr_debug("POWER_SUPPLY_PROP_CURRENT_MAX:%d\n",
+		dev_dbg(bq->dev, "POWER_SUPPLY_PROP_CURRENT_MAX:%d\n",
 			 val->intval);
 		break;
 
@@ -860,7 +859,7 @@ static int bq2591x_charger_get_property(struct power_supply *psy,
 		if (rc >= 0)
 			val->intval = itemp * 1000;
 
-		pr_debug("POWER_SUPPLY_PROP_VOLTAGE_MAX:%d\n",
+		dev_dbg(bq->dev, "POWER_SUPPLY_PROP_VOLTAGE_MAX:%d\n",
 			 val->intval);
 		break;
 
@@ -870,12 +869,12 @@ static int bq2591x_charger_get_property(struct power_supply *psy,
 		if (bq2591x_is_usb_present(bq)) {
 			val->intval = bq2591x_get_prop_charge_type(bq);
 			if (val->intval == POWER_SUPPLY_CHARGE_TYPE_UNKNOWN) {
-				pr_debug("Failed to get charge type, charger may be absent\n");
+				dev_dbg(bq->dev, "Failed to get charge type, charger may be absent\n");
 				return -ENODEV;
 			}
 		}
 
-		pr_debug("POWER_SUPPLY_PROP_CHARGE_TYPE:%d\n",
+		dev_dbg(bq->dev, "POWER_SUPPLY_PROP_CHARGE_TYPE:%d\n",
 			 val->intval);
 		break;
 
@@ -885,28 +884,28 @@ static int bq2591x_charger_get_property(struct power_supply *psy,
 		if (rc >= 0)
 			val->intval = itemp * 1000;
 
-		pr_debug("POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX:%d\n",
+		dev_dbg(bq->dev, "POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX:%d\n",
 			 val->intval);
 		break;
 
 	case POWER_SUPPLY_PROP_STATUS:
 		val->intval = bq2591x_get_charging_status(bq);
 
-		pr_debug("POWER_SUPPLY_PROP_STATUS:%d\n",
+		dev_dbg(bq->dev, "POWER_SUPPLY_PROP_STATUS:%d\n",
 			 val->intval);
 		break;
 
 	case POWER_SUPPLY_PROP_INPUT_CURRENT_LIMITED:
 		val->intval = bq2591x_is_input_current_limited(bq) ? 1 : 0;
 
-		pr_debug("POWER_SUPPLY_PROP_INPUT_CURRENT_LIMITED:%d\n",
+		dev_dbg(bq->dev, "POWER_SUPPLY_PROP_INPUT_CURRENT_LIMITED:%d\n",
 			 val->intval);
 		break;
 
 	case POWER_SUPPLY_PROP_PARALLEL_MODE:
 		val->intval = POWER_SUPPLY_PL_USBIN_USBIN;
 		/*val->intval = POWER_SUPPLY_PL_USBMID_USBMID;*/
-		pr_debug("POWER_SUPPLY_PROP_PARALLEL_MODE:%d\n",
+		dev_dbg(bq->dev, "POWER_SUPPLY_PROP_PARALLEL_MODE:%d\n",
 			 val->intval);
 		break;
 
@@ -955,7 +954,7 @@ static int bq2591x_charger_get_property(struct power_supply *psy,
 		break;
 
 	default:
-		pr_err("unsupported prop:%d\n", prop);
+		dev_err(bq->dev, "unsupported prop:%d\n", prop);
 		return -EINVAL;
 	}
 
@@ -1021,25 +1020,25 @@ static int bq2591x_set_charge_profile(struct bq2591x *bq)
 
 	ret = bq2591x_set_chargevoltage(bq, bq->cfg.chg_mv);
 	if (ret < 0) {
-		pr_err("Failed to set charge voltage:%d\n", ret);
+		dev_err(bq->dev, "Failed to set charge voltage:%d\n", ret);
 		return ret;
 	}
 
 	ret = bq2591x_set_chargecurrent(bq, bq->cfg.chg_ma);
 	if (ret < 0) {
-		pr_err("Failed to set charge current:%d\n", ret);
+		dev_err(bq->dev, "Failed to set charge current:%d\n", ret);
 		return ret;
 	}
 
 	ret = bq2591x_set_input_current_limit(bq, bq->cfg.icl_ma);
 	if (ret < 0) {
-		pr_err("Failed to set input current limit:%d\n", ret);
+		dev_err(bq->dev, "Failed to set input current limit:%d\n", ret);
 		return ret;
 	}
 
 	ret = bq2591x_set_input_volt_limit(bq, bq->cfg.ivl_mv);
 	if (ret < 0) {
-		pr_err("Failed to set input voltage limit:%d\n", ret);
+		dev_err(bq->dev, "Failed to set input voltage limit:%d\n", ret);
 		return ret;
 	}
 	return 0;
@@ -1056,19 +1055,19 @@ static int bq2591x_init_device(struct bq2591x *bq)
 
 	ret = bq2591x_disable_watchdog_timer(bq);
 	if (ret < 0)
-		pr_err("Failed to disable watchdog timer:%d\n", ret);
+		dev_err(bq->dev, "Failed to disable watchdog timer:%d\n", ret);
 
 	/* as slave charger, disable it by default */
 	bq2591x_usb_suspend(bq, true);
 
 	ret = bq2591x_enable_term(bq, bq->cfg.enable_term);
 	if (ret < 0)
-		pr_err("Failed to %s termination:%d\n",
+		dev_err(bq->dev, "Failed to %s termination:%d\n",
 		       bq->cfg.enable_term ? "enable" : "disable", ret);
 
 	ret = bq2591x_set_vbatlow_volt(bq, bq->cfg.batlow_mv);
 	if (ret < 0)
-		pr_err("Failed to set vbatlow volt to %d,rc=%d\n",
+		dev_err(bq->dev, "Failed to set vbatlow volt to %d,rc=%d\n",
 		       bq->cfg.batlow_mv, ret);
 
 	bq2591x_set_charge_profile(bq);
@@ -1085,7 +1084,7 @@ static void bq2591x_dump_regs(struct bq2591x *bq)
 		msleep(2);
 		ret = bq2591x_read_byte(bq, &val, addr);
 		if (!ret)
-			pr_err("Reg[%02X] = 0x%02X\n", addr, val);
+			dev_err(bq->dev, "Reg[%02X] = 0x%02X\n", addr, val);
 	}
 }
 
@@ -1096,30 +1095,30 @@ static void bq2591x_stat_handler(struct bq2591x *bq)
 
 	bq->prev_stat_flag = bq->reg_stat_flag;
 
-	pr_info("%s\n", (bq->reg_stat & BQ2591X_PG_STAT_MASK) ?
+	dev_info(bq->dev, "%s\n", (bq->reg_stat & BQ2591X_PG_STAT_MASK) ?
 		"Power Good" : "Power Poor");
 
 	if (bq->reg_stat & BQ2591X_IINDPM_STAT_MASK)
-		pr_info("IINDPM Triggered\n");
+		dev_info(bq->dev, "IINDPM Triggered\n");
 
 	if (bq->reg_stat & BQ2591X_VINDPM_STAT_MASK)
-		pr_info("VINDPM Triggered\n");
+		dev_info(bq->dev, "VINDPM Triggered\n");
 
 	if (bq->reg_stat & BQ2591X_TREG_STAT_MASK)
-		pr_info("TREG Triggered\n");
+		dev_info(bq->dev, "TREG Triggered\n");
 
 	if (bq->reg_stat & BQ2591X_WD_STAT_MASK)
-		pr_err("Watchdog overflow\n");
+		dev_err(bq->dev, "Watchdog overflow\n");
 
 	bq->charge_state = (bq->reg_stat & BQ2591X_CHRG_STAT_MASK)
 		>> BQ2591X_CHRG_STAT_SHIFT;
 
 	if (bq->charge_state == BQ2591X_CHRG_STAT_NCHG)
-		pr_info("Not Charging\n");
+		dev_info(bq->dev, "Not Charging\n");
 	else if (bq->charge_state == BQ2591X_CHRG_STAT_FCHG)
-		pr_info("Fast Charging\n");
+		dev_info(bq->dev, "Fast Charging\n");
 	else if (bq->charge_state == BQ2591X_CHRG_STAT_TCHG)
-		pr_info("Taper Charging\n");
+		dev_info(bq->dev, "Taper Charging\n");
 }
 
 static void bq2591x_fault_handler(struct bq2591x *bq)
@@ -1130,27 +1129,27 @@ static void bq2591x_fault_handler(struct bq2591x *bq)
 	bq->prev_fault_flag = bq->reg_fault_flag;
 
 	if (bq->reg_fault_flag & BQ2591X_VBUS_OVP_FLAG_MASK)
-		pr_info("VBus OVP fault occurred, current stat:%d",
+		dev_info(bq->dev, "VBus OVP fault occurred, current stat:%d",
 			bq->reg_fault & BQ2591X_VBUS_OVP_STAT_MASK);
 
 	if (bq->reg_fault_flag & BQ2591X_TSHUT_FLAG_MASK)
-		pr_info("Thermal shutdown occurred, current stat:%d",
+		dev_info(bq->dev, "Thermal shutdown occurred, current stat:%d",
 			bq->reg_fault & BQ2591X_TSHUT_STAT_MASK);
 
 	if (bq->reg_fault_flag & BQ2591X_BATOVP_FLAG_MASK)
-		pr_info("Battery OVP fault occurred, current stat:%d",
+		dev_info(bq->dev, "Battery OVP fault occurred, current stat:%d",
 			bq->reg_fault & BQ2591X_BATOVP_STAT_MASK);
 
 	if (bq->reg_fault_flag & BQ2591X_CFLY_FLAG_MASK)
-		pr_info("CFLY fault occurred, current stat:%d",
+		dev_info(bq->dev, "CFLY fault occurred, current stat:%d",
 			bq->reg_fault & BQ2591X_CFLY_STAT_MASK);
 
 	if (bq->reg_fault_flag & BQ2591X_TMR_FLAG_MASK)
-		pr_info("Charge safety timer fault, current stat:%d",
+		dev_info(bq->dev, "Charge safety timer fault, current stat:%d",
 			bq->reg_fault & BQ2591X_TMR_STAT_MASK);
 
 	if (bq->reg_fault_flag & BQ2591X_CAP_COND_FLAG_MASK)
-		pr_info("CAP conditon fault occurred, current stat:%d",
+		dev_info(bq->dev, "CAP conditon fault occurred, current stat:%d",
 			bq->reg_fault & BQ2591X_CAP_COND_STAT_MASK);
 }
 
@@ -1218,10 +1217,10 @@ static int bq2591x_charger_probe(struct i2c_client *client,
 
 	ret = bq2591x_detect_device(bq);
 	if (!ret && bq->part_no == BQ25910) {
-		pr_info("charger device bq25910 detected, revision:%d\n",
+		dev_info(bq->dev, "charger device bq25910 detected, revision:%d\n",
 			bq->revision);
 	} else {
-		pr_info("no bq25910 charger device found:%d\n", ret);
+		dev_info(bq->dev, "no bq25910 charger device found:%d\n", ret);
 		return -ENODEV;
 	}
 
@@ -1230,7 +1229,7 @@ static int bq2591x_charger_probe(struct i2c_client *client,
 
 	ret = bq2591x_init_device(bq);
 	if (ret) {
-		pr_err("device init failure: %d\n", ret);
+		dev_err(bq->dev, "device init failure: %d\n", ret);
 		goto err_0;
 	}
 
@@ -1259,7 +1258,7 @@ static int bq2591x_charger_probe(struct i2c_client *client,
 						      &bq->parallel_psy_d,
 						      &parallel_psy_cfg);
 	if (IS_ERR(bq->parallel_psy)) {
-		pr_err("Couldn't register parallel psy rc=%ld\n",
+		dev_err(bq->dev, "Couldn't register parallel psy rc=%ld\n",
 		       PTR_ERR(bq->parallel_psy));
 		ret = PTR_ERR(bq->parallel_psy);
 		return ret;
@@ -1272,7 +1271,7 @@ static int bq2591x_charger_probe(struct i2c_client *client,
 						IRQF_ONESHOT,
 						"bq2591x charger irq", bq);
 		if (ret < 0) {
-			pr_err("request irq for irq=%d failed,ret =%d\n",
+			dev_err(bq->dev, "request irq for irq=%d failed,ret =%d\n",
 			       client->irq, ret);
 			goto err_0;
 		}
@@ -1286,7 +1285,7 @@ static int bq2591x_charger_probe(struct i2c_client *client,
 	if (ret)
 		dev_err(bq->dev, "failed to register sysfs. err: %d\n", ret);
 
-	pr_info("BQ2591X PARALLEL charger driver probe successfully\n");
+	dev_info(bq->dev, "BQ2591X PARALLEL charger driver probe successfully\n");
 
 	return 0;
 
