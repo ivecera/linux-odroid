@@ -219,7 +219,6 @@ static int bq2591x_enable_charger(struct bq2591x *bq)
 				  BQ2591X_EN_CHG_MASK, val);
 	return ret;
 }
-EXPORT_SYMBOL_GPL(bq2591x_enable_charger);
 
 static int bq2591x_disable_charger(struct bq2591x *bq)
 {
@@ -231,7 +230,6 @@ static int bq2591x_disable_charger(struct bq2591x *bq)
 
 	return ret;
 }
-EXPORT_SYMBOL_GPL(bq2591x_disable_charger);
 
 static int bq2591x_enable_term(struct bq2591x *bq, bool enable)
 {
@@ -250,7 +248,6 @@ static int bq2591x_enable_term(struct bq2591x *bq, bool enable)
 
 	return ret;
 }
-EXPORT_SYMBOL_GPL(bq2591x_enable_term);
 
 int bq2591x_set_chargecurrent(struct bq2591x *bq, int curr)
 {
@@ -263,7 +260,6 @@ int bq2591x_set_chargecurrent(struct bq2591x *bq, int curr)
 	return bq2591x_update_bits(bq, BQ2591X_REG_01,
 				   BQ2591X_ICHG_MASK, ichg);
 }
-EXPORT_SYMBOL_GPL(bq2591x_set_chargecurrent);
 
 static int bq2591x_get_chargecurrent(struct bq2591x *bq, int *curr)
 {
@@ -289,7 +285,6 @@ int bq2591x_set_chargevoltage(struct bq2591x *bq, int volt)
 	return bq2591x_update_bits(bq, BQ2591X_REG_00,
 				   BQ2591X_VREG_MASK, val);
 }
-EXPORT_SYMBOL_GPL(bq2591x_set_chargevoltage);
 
 static int bq2591x_get_chargevoltage(struct bq2591x *bq, int *volt)
 {
@@ -317,7 +312,6 @@ int bq2591x_set_input_volt_limit(struct bq2591x *bq, int volt)
 	return bq2591x_update_bits(bq, BQ2591X_REG_02,
 				   BQ2591X_VINDPM_MASK, val);
 }
-EXPORT_SYMBOL_GPL(bq2591x_set_input_volt_limit);
 
 int bq2591x_set_input_current_limit(struct bq2591x *bq, int curr)
 {
@@ -329,7 +323,6 @@ int bq2591x_set_input_current_limit(struct bq2591x *bq, int curr)
 	return bq2591x_update_bits(bq, BQ2591X_REG_03,
 				   BQ2591X_IINLIM_MASK, val);
 }
-EXPORT_SYMBOL_GPL(bq2591x_set_input_current_limit);
 
 static int bq2591x_get_input_current_limit(struct bq2591x *bq, int *curr)
 {
@@ -357,7 +350,6 @@ int bq2591x_set_watchdog_timer(struct bq2591x *bq, u8 timeout)
 	return bq2591x_update_bits(bq, BQ2591X_REG_05,
 				   BQ2591X_WDT_MASK, val);
 }
-EXPORT_SYMBOL_GPL(bq2591x_set_watchdog_timer);
 
 int bq2591x_disable_watchdog_timer(struct bq2591x *bq)
 {
@@ -366,7 +358,6 @@ int bq2591x_disable_watchdog_timer(struct bq2591x *bq)
 	return bq2591x_update_bits(bq, BQ2591X_REG_05,
 				   BQ2591X_WDT_MASK, val);
 }
-EXPORT_SYMBOL_GPL(bq2591x_disable_watchdog_timer);
 
 int bq2591x_reset_watchdog_timer(struct bq2591x *bq)
 {
@@ -375,7 +366,6 @@ int bq2591x_reset_watchdog_timer(struct bq2591x *bq)
 	return bq2591x_update_bits(bq, BQ2591X_REG_05,
 				   BQ2591X_WDT_RESET_MASK, val);
 }
-EXPORT_SYMBOL_GPL(bq2591x_reset_watchdog_timer);
 
 int bq2591x_reset_chip(struct bq2591x *bq)
 {
@@ -387,7 +377,6 @@ int bq2591x_reset_chip(struct bq2591x *bq)
 
 	return ret;
 }
-EXPORT_SYMBOL_GPL(bq2591x_reset_chip);
 
 int bq2591x_set_vbatlow_volt(struct bq2591x *bq, int volt)
 {
@@ -561,7 +550,6 @@ int bq2591x_get_charging_status(struct bq2591x *bq)
 	else
 		return POWER_SUPPLY_STATUS_UNKNOWN;
 }
-EXPORT_SYMBOL_GPL(bq2591x_get_charging_status);
 
 static int bq2591x_get_prop_charge_type(struct bq2591x *bq)
 {
