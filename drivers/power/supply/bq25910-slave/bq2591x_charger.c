@@ -209,25 +209,14 @@ out:
 	return ret;
 }
 
-static int bq2591x_enable_charger(struct bq2591x *bq)
+static int bq2591x_enable_charger(struct bq2591x *bq, bool enable)
 {
-	int ret;
-	u8 val = BQ2591X_CHG_ENABLE << BQ2591X_EN_CHG_SHIFT;
+	u8 val = enable ? BQ2591X_CHG_ENABLE : BQ2591X_CHG_DISABLE;
 
-	ret = bq2591x_update_bits(bq, BQ2591X_REG_06,
-				  BQ2591X_EN_CHG_MASK, val);
-	return ret;
-}
+	val <<= BQ2591X_EN_CHG_SHIFT;
 
-static int bq2591x_disable_charger(struct bq2591x *bq)
-{
-	u8 val = BQ2591X_CHG_DISABLE << BQ2591X_EN_CHG_SHIFT;
-	int ret;
-
-	ret = bq2591x_update_bits(bq, BQ2591X_REG_06,
-				  BQ2591X_EN_CHG_MASK, val);
-
-	return ret;
+	return bq2591x_update_bits(bq, BQ2591X_REG_06, BQ2591X_EN_CHG_MASK,
+				   val);
 }
 
 static int bq2591x_enable_term(struct bq2591x *bq, bool enable)
@@ -512,11 +501,7 @@ static int bq2591x_usb_suspend(struct bq2591x *bq, bool suspend)
 {
 	int rc = 0;
 
-	if (suspend)
-		rc = bq2591x_disable_charger(bq);
-	else
-		rc = bq2591x_enable_charger(bq);
-
+	rc = bq2591x_enable_charger(bq, suspend);
 	if (rc) {
 		dev_err(bq->dev, "failed to %s (rc=%d)\n",
 			suspend ? "suspend" : "resume",  rc);
