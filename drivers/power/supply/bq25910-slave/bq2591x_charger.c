@@ -107,8 +107,6 @@ struct bq2591x {
 	int			skip_writes;
 };
 
-static int bq2591x_set_fast_chg_current(struct bq2591x *bq, int current_ma);
-
 static int __bq2591x_read_reg(struct bq2591x *bq, u8 reg, u8 *data)
 {
 	s32 ret;
