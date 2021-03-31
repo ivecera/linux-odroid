@@ -69,6 +69,10 @@ const char *hw_platform[] = {
 	[QCOM_HW_PLATFORM_ADP] = "ADP",
 	[QCOM_HW_PLATFORM_TTP] = "TTP",
 	[QCOM_HW_PLATFORM_HDK] = "HDK",
+	[QCOM_HW_PLATFORM_E2]  = "SIRIUS",
+	[QCOM_HW_PLATFORM_F2]  = "GRUS",
+	[QCOM_HW_PLATFORM_F3B] = "PYXIS",
+	[QCOM_HW_PLATFORM_F3M] = "VELA",
 };
 
 enum {
