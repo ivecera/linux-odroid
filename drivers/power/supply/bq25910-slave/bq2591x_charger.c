@@ -31,6 +31,10 @@
 #include <linux/bitops.h>
 #include "bq25910_reg.h"
 
+#ifdef CONFIG_SENSORS_QPNP_ADC_VOLTAGE
+#include <linux/qpnp/qpnp-adc.h>
+#endif
+
 enum bq2591x_part_no {
 	BQ25910 = 0x01,
 };
@@ -103,6 +107,10 @@ struct bq2591x {
 	struct dentry		*debug_root;
 	int			skip_reads;
 	int			skip_writes;
+
+#ifdef CONFIG_SENSORS_QPNP_ADC_VOLTAGE
+	struct qpnp_vadc_chip   *vadc_dev;
+#endif
 };
 
 static int __bq2591x_read_reg(struct bq2591x *bq, u8 reg, u8 *data)
@@ -504,6 +512,38 @@ static int bq2591x_get_prop_charge_type(struct bq2591x *bq)
 	return  POWER_SUPPLY_CHARGE_TYPE_NONE;
 }
 
+static int bq2591x_get_prop_health(struct bq2591x *bq)
+{
+#ifdef CONFIG_SENSORS_QPNP_ADC_VOLTAGE
+
+#define CONN_HEALTH_WARM_TRH           530
+#define CONN_HEALTH_HOT_TRH            560
+#define CONN_HEALTH_OVERHEAT_TRH       710
+
+	struct qpnp_vadc_result results;
+	int rc, temp = 0;
+
+	if (bq->vadc_dev) {
+		rc = qpnp_vadc_read(bq->vadc_dev, VADC_AMUX_THM3_PU2, &results);
+		if (rc)
+			dev_err(bq->dev,
+				"failed to read adc connector temp (rc=%d)\n",
+				rc);
+		else
+			temp = (int)results.physical / 100;
+	}
+
+	if (temp > CONN_HEALTH_OVERHEAT_TRH)
+		return POWER_SUPPLY_HEALTH_OVERHEAT;
+	else if (temp > CONN_HEALTH_HOT_TRH)
+		return POWER_SUPPLY_HEALTH_HOT;
+	else if (temp > CONN_HEALTH_WARM_TRH)
+		return POWER_SUPPLY_HEALTH_WARM;
+#endif
+
+	return POWER_SUPPLY_HEALTH_COOL;
+}
+
 static bool bq2591x_is_usb_present(struct bq2591x *bq)
 {
 	union power_supply_propval val = { 0, };
@@ -834,7 +874,10 @@ static int bq2591x_charger_get_property(struct power_supply *psy,
 		break;
 
 	case POWER_SUPPLY_PROP_CONNECTOR_HEALTH:
-		val->intval = POWER_SUPPLY_HEALTH_GOOD;
+		if (bq->c_health == -EINVAL)
+			val->intval = bq2591x_get_prop_health(bq);
+		else
+			val->intval = bq->c_health;
 		break;
 
 	case POWER_SUPPLY_PROP_CHARGER_TEMP:
@@ -1160,6 +1203,12 @@ static int bq2591x_charger_probe(struct i2c_client *client,
 		dev_err(bq->dev, "failed to init device (rc=%d)\n", ret);
 		goto err_0;
 	}
+
+#ifdef CONFIG_SENSORS_QPNP_ADC_VOLTAGE
+	bq->vadc_dev = qpnp_get_vadc(bq->dev, "chg");
+	if (IS_ERR(bq->vadc_dev) && PTR_ERR(bq->vadc_dev) == -ENODEV)
+		dev_info(bq->dev, "vadc property not found\n");
+#endif
 
 	bq->max_fcc = INT_MAX;
 	bq->c_health = -EINVAL;
