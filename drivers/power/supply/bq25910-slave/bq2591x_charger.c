@@ -328,16 +328,6 @@ static int bq2591x_disable_watchdog_timer(struct bq2591x *bq)
 	return bq2591x_set_watchdog_timer(bq, 0);
 }
 
-static int bq2591x_reset_watchdog_timer(struct bq2591x *bq)
-{
-	return BQ2591X_UPDATE_REG_S(bq, BQ2591X_REG_05, WDT_RESET, BQ2591X_WDT_RESET);
-}
-
-static int bq2591x_reset_chip(struct bq2591x *bq)
-{
-	return BQ2591X_UPDATE_REG_S(bq, BQ2591X_REG_0D, RESET, BQ2591X_RESET);
-}
-
 static int bq2591x_set_vbatlow_volt(struct bq2591x *bq, int volt)
 {
 	switch (volt) {
