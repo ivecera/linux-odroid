@@ -42,8 +42,6 @@ enum reason {
 	SOC	= BIT(3),
 };
 
-#define  SUSPEND_CURRENT_MA 2
-
 struct bq2591x_config {
 	int	chg_mv;
 	int	chg_ma;
