@@ -838,11 +838,11 @@ static int bq2591x_charger_get_property(struct power_supply *psy,
 		break;
 
 	case POWER_SUPPLY_PROP_CHARGER_TEMP:
-		val->intval = 20000;
+		val->intval = 200;
 		break;
 
 	case POWER_SUPPLY_PROP_CHARGER_TEMP_MAX:
-		val->intval = 80000;
+		val->intval = 800;
 		break;
 
 	case POWER_SUPPLY_PROP_SET_SHIP_MODE:
