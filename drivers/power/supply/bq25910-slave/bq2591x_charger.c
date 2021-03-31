@@ -310,6 +310,8 @@ static int bq2591x_set_input_volt_limit(struct bq2591x *bq, int volt)
 
 static int bq2591x_set_input_current_limit(struct bq2591x *bq, int curr)
 {
+	curr = min(curr, 500);
+
 	return BQ2591X_UPDATE_REG_BLS(bq, BQ2591X_REG_03, IINLIM, curr);
 }
 
