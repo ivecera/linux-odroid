@@ -1263,17 +1263,23 @@ static int reverse_path_check(void)
 
 static int ep_create_wakeup_source(struct epitem *epi)
 {
-	const char *name;
 	struct wakeup_source *ws;
+	struct name_snapshot n;
+	char *name;
 
 	if (!epi->ep->ws) {
-		epi->ep->ws = wakeup_source_register("eventpoll");
+		name = kasprintf(GFP_KERNEL, "eventpoll-%s", current->comm);
+		epi->ep->ws = wakeup_source_register(name);
+		kfree(name);
 		if (!epi->ep->ws)
 			return -ENOMEM;
 	}
 
-	name = epi->ffd.file->f_path.dentry->d_name.name;
+	take_dentry_name_snapshot(&n, epi->ffd.file->f_path.dentry);
+	name = kasprintf(GFP_KERNEL, "%s-%s", n.name, current->comm);
 	ws = wakeup_source_register(name);
+	kfree(name);
+	release_dentry_name_snapshot(&n);
 
 	if (!ws)
 		return -ENOMEM;
