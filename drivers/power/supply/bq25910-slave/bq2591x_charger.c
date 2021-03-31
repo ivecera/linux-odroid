@@ -1021,12 +1021,26 @@ static void bq2591x_stat_handler(struct bq2591x *bq)
 	bq->charge_state = (bq->reg_stat & BQ2591X_CHRG_STAT_MASK)
 		>> BQ2591X_CHRG_STAT_SHIFT;
 
-	if (bq->charge_state == BQ2591X_CHRG_STAT_NCHG)
+	switch (bq->charge_state) {
+	case BQ2591X_CHRG_STAT_NCHG:
+		/* stop monitoring */
+		cancel_delayed_work_sync(&bq->monitor_work);
+
 		dev_info(bq->dev, "Not Charging\n");
-	else if (bq->charge_state == BQ2591X_CHRG_STAT_FCHG)
+		break;
+	case BQ2591X_CHRG_STAT_FCHG:
+		/* start monitoring */
+		if (!delayed_work_pending(&bq->monitor_work))
+			schedule_delayed_work(&bq->monitor_work, HZ);
+
 		dev_info(bq->dev, "Fast Charging\n");
-	else if (bq->charge_state == BQ2591X_CHRG_STAT_TCHG)
+		break;
+	case BQ2591X_CHRG_STAT_TCHG:
 		dev_info(bq->dev, "Taper Charging\n");
+		break;
+	default:
+		break;
+	}
 }
 
 static void bq2591x_fault_handler(struct bq2591x *bq)
@@ -1193,8 +1207,6 @@ static int bq2591x_charger_probe(struct i2c_client *client,
 			goto err_0;
 		}
 	}
-
-	schedule_delayed_work(&bq->monitor_work, HZ);
 
 	create_debugfs_entries(bq);
 
