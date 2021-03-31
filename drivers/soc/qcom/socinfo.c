@@ -772,6 +772,7 @@ uint32_t socinfo_get_platform_version(void)
 			socinfo->v0_4.platform_version : 0)
 		: 0;
 }
+EXPORT_SYMBOL(socinfo_get_platform_version);
 
 /* This information is directly encoded by the machine id */
 /* Thus no external callers rely on this information at the moment */
