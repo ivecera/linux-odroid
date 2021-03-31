@@ -505,8 +505,10 @@ static int bq2591x_get_prop_charge_type(struct bq2591x *bq)
 		return POWER_SUPPLY_CHARGE_TYPE_NONE;
 	case BQ2591X_CHRG_STAT_FCHG:
 		return POWER_SUPPLY_CHARGE_TYPE_FAST;
+#if CONFIG_MACH_XIAOMI
 	case BQ2591X_CHRG_STAT_TCHG:
 		return POWER_SUPPLY_CHARGE_TYPE_TAPER;
+#endif
 	}
 
 	return  POWER_SUPPLY_CHARGE_TYPE_NONE;
