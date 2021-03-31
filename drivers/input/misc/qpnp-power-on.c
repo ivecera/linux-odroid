@@ -393,6 +393,17 @@ bool qpnp_pon_check_hard_reset_stored(void)
 }
 EXPORT_SYMBOL(qpnp_pon_check_hard_reset_stored);
 
+int qpnp_pon_power_off_reason(void)
+{
+	struct qpnp_pon *pon = sys_reset_dev;
+
+	if (!pon)
+		return -EPROBE_DEFER;
+
+	return pon->pon_power_off_reason;
+}
+EXPORT_SYMBOL(qpnp_pon_power_off_reason);
+
 static int qpnp_pon_set_dbc(struct qpnp_pon *pon, u32 delay)
 {
 	int rc = 0;
