@@ -175,9 +175,6 @@ static int bq2591x_write_byte(struct bq2591x *bq, u8 reg, u8 data)
 	ret = __bq2591x_write_reg(bq, reg, data);
 	mutex_unlock(&bq->i2c_rw_lock);
 
-	if (ret)
-		dev_err(bq->dev, "Failed: reg=%02X, ret=%d\n", reg, ret);
-
 	return ret;
 }
 
@@ -192,19 +189,13 @@ static int bq2591x_update_reg(struct bq2591x *bq, u8 reg, u8 mask, u8 data)
 	mutex_lock(&bq->i2c_rw_lock);
 
 	ret = __bq2591x_read_reg(bq, reg, &val);
-	if (ret) {
-		dev_err(bq->dev, "failed to read register %02X (rc=%d)\n",
-			reg, ret);
+	if (ret)
 		goto out;
-	}
 
 	val &= ~mask;
 	val |= data & mask;
 
 	ret = __bq2591x_write_reg(bq, reg, val);
-	if (ret)
-		dev_err(bq->dev, "failed to write register %02X (rc=%d)\n",
-			reg, ret);
 
 out:
 	mutex_unlock(&bq->i2c_rw_lock);
@@ -217,8 +208,8 @@ out:
 	u8 VAL;								\
 	RET = bq2591x_read_byte(BQ, &VAL, REG_NUM);			\
 	if (RET < 0)							\
-		dev_err((BQ)->dev, "failed to read register %02X "	\
-				   "(rc=%d)\n",	REG_NUM, RET);		\
+		dev_err((BQ)->dev, "failed to read %s register "	\
+				   "(rc=%d)\n", #REG_NAME, RET);	\
 	else								\
 		(OUT) = (VAL & BQ2591X_##REG_NAME##_MASK);		\
 	RET; })
@@ -257,6 +248,9 @@ out:
 	int RET;							\
 	RET = bq2591x_update_reg(BQ, REG_NUM,				\
 				 BQ2591X_##REG_NAME##_MASK, VAL);	\
+	if (RET < 0)							\
+		dev_err((BQ)->dev, "failed to update %s register "	\
+				   "(rc=%d)\n", #REG_NAME, RET);	\
 	RET; })
 
 #define BQ2591X_UPDATE_REG_S(BQ, REG_NUM, REG_NAME, IN)			\
@@ -483,11 +477,8 @@ int bq2591x_get_charging_status(struct bq2591x *bq)
 	int ret, val;
 
 	ret = BQ2591X_READ_REG_MS(bq, BQ2591X_REG_07, CHRG_STAT, val);
-	if (ret < 0) {
-		dev_err(bq->dev, "failed to read register 0x0b (rc=%d)\n",
-			ret);
+	if (ret < 0)
 		return ret;
-	}
 
 	switch (val) {
 	case BQ2591X_CHRG_STAT_NCHG:
@@ -506,11 +497,8 @@ static int bq2591x_get_prop_charge_type(struct bq2591x *bq)
 	int ret, val;
 
 	ret = BQ2591X_READ_REG_MS(bq, BQ2591X_REG_07, CHRG_STAT, val);
-	if (ret) {
-		dev_err(bq->dev, "failed to read status register (rc=%d)\n",
-			ret);
+	if (ret)
 		return POWER_SUPPLY_CHARGE_TYPE_UNKNOWN;
-	}
 
 	dev_dbg(bq->dev, "Status Reg = 0x%02X\n", val);
 
@@ -985,26 +973,22 @@ static int bq2591x_init_device(struct bq2591x *bq)
 
 	ret = bq2591x_disable_watchdog_timer(bq);
 	if (ret < 0)
-		dev_err(bq->dev, "failed to disable watchdog timer (rc=%d)\n",
-			ret);
+		return ret;
 
 	/* as slave charger, disable it by default */
 	bq2591x_usb_suspend(bq, true);
 
 	ret = bq2591x_enable_term(bq, bq->cfg.enable_term);
 	if (ret < 0)
-		dev_err(bq->dev, "failed to %s termination (rc=%d)\n",
-			bq->cfg.enable_term ? "enable" : "disable", ret);
+		return ret;
 
 	ret = bq2591x_set_vbatlow_volt(bq, bq->cfg.batlow_mv);
 	if (ret < 0)
-		dev_err(bq->dev,
-			"failed to set vbatlow volt to %d (rc=%d)\n",
-			bq->cfg.batlow_mv, ret);
+		return ret;
 
 	bq2591x_set_charge_profile(bq);
 
-	return 0;
+	return ret;
 }
 
 static void bq2591x_dump_regs(struct bq2591x *bq)
