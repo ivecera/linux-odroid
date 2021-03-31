@@ -181,33 +181,99 @@ static int bq2591x_write_byte(struct bq2591x *bq, u8 reg, u8 data)
 	return ret;
 }
 
-static int bq2591x_update_bits(struct bq2591x *bq, u8 reg,
-			       u8 mask, u8 data)
+static int bq2591x_update_reg(struct bq2591x *bq, u8 reg, u8 mask, u8 data)
 {
 	int ret;
-	u8 tmp;
+	u8 val;
 
 	if (bq->skip_reads || bq->skip_writes)
 		return 0;
 
 	mutex_lock(&bq->i2c_rw_lock);
-	ret = __bq2591x_read_reg(bq, reg, &tmp);
+
+	ret = __bq2591x_read_reg(bq, reg, &val);
 	if (ret) {
-		dev_err(bq->dev, "read failure: reg=%02X, ret=%d\n", reg, ret);
+		dev_err(bq->dev, "failed to read register %02X (rc=%d)\n",
+			reg, ret);
 		goto out;
 	}
 
-	tmp &= ~mask;
-	tmp |= data & mask;
+	val &= ~mask;
+	val |= data & mask;
 
-	ret = __bq2591x_write_reg(bq, reg, tmp);
+	ret = __bq2591x_write_reg(bq, reg, val);
 	if (ret)
-		dev_err(bq->dev, "write failure: reg=%02X, ret=%d\n", reg, ret);
+		dev_err(bq->dev, "failed to write register %02X (rc=%d)\n",
+			reg, ret);
 
 out:
 	mutex_unlock(&bq->i2c_rw_lock);
+
 	return ret;
 }
+
+#define _BQ2591X_READ_REG_M(BQ, REG_NUM, REG_NAME, OUT, RET, VAL) ({	\
+	int RET;							\
+	u8 VAL;								\
+	RET = bq2591x_read_byte(BQ, &VAL, REG_NUM);			\
+	if (RET < 0)							\
+		dev_err((BQ)->dev, "failed to read register %02X "	\
+				   "(rc=%d)\n",	REG_NUM, RET);		\
+	else								\
+		(OUT) = (VAL & BQ2591X_##REG_NAME##_MASK);		\
+	RET; })
+
+#define BQ2591X_READ_REG_M(BQ, REG_NUM, REG_NAME, OUT)			\
+	_BQ2591X_READ_REG_M(BQ, REG_NUM, REG_NAME, OUT,			\
+			    __UNIQUE_ID(ret), __UNIQUE_ID(val))
+
+#define _BQ2591X_READ_REG_MS(BQ, REG_NUM, REG_NAME, OUT, RET, VAL) ({	\
+	int RET, VAL;							\
+	RET = BQ2591X_READ_REG_M(BQ, REG_NUM, REG_NAME, VAL);		\
+	if (!RET)							\
+		(OUT) = VAL >> BQ2591X_##REG_NAME##_SHIFT;		\
+	RET; })
+
+#define BQ2591X_READ_REG_MS(BQ, REG_NUM, REG_NAME, OUT)			\
+	_BQ2591X_READ_REG_MS(BQ, REG_NUM, REG_NAME, OUT,		\
+			     __UNIQUE_ID(ret), __UNIQUE_ID(val))
+
+#define _BQ2591X_READ_REG_MSLB(BQ, REG_NUM, REG_NAME, OUT, RET, VAL) ({	\
+	int RET, VAL;							\
+	RET = BQ2591X_READ_REG_MS(BQ, REG_NUM, REG_NAME, VAL);		\
+	if (!RET) {							\
+		VAL *= BQ2591X_##REG_NAME##_LSB;			\
+		VAL += BQ2591X_##REG_NAME##_BASE;			\
+		(OUT) = VAL;						\
+	}								\
+	RET; })
+
+#define BQ2591X_READ_REG_MSLB(BQ, REG_NUM, REG_NAME, OUT)		\
+	_BQ2591X_READ_REG_MSLB(BQ, REG_NUM, REG_NAME, OUT,		\
+			       __UNIQUE_ID(ret), __UNIQUE_ID(val))
+
+#define _BQ2591X_UPDATE_REG_S(BQ, REG_NUM, REG_NAME, IN, RET, VAL) ({	\
+	u8 VAL = (IN) << BQ2591X_##REG_NAME##_SHIFT;			\
+	int RET;							\
+	RET = bq2591x_update_reg(BQ, REG_NUM,				\
+				 BQ2591X_##REG_NAME##_MASK, VAL);	\
+	RET; })
+
+#define BQ2591X_UPDATE_REG_S(BQ, REG_NUM, REG_NAME, IN)			\
+	_BQ2591X_UPDATE_REG_S(BQ, REG_NUM, REG_NAME, IN,		\
+			      __UNIQUE_ID(ret), __UNIQUE_ID(val))
+
+#define _BQ2591X_UPDATE_REG_BLS(BQ, REG_NUM, REG_NAME, IN, RET, VAL)	\
+	({								\
+	 u8 VAL = ((IN) - BQ2591X_##REG_NAME##_BASE);			\
+	 int RET;							\
+	 VAL /= BQ2591X_##REG_NAME##_LSB;				\
+	 RET = BQ2591X_UPDATE_REG_S(BQ, REG_NUM, REG_NAME, VAL);	\
+	 RET; })
+
+#define BQ2591X_UPDATE_REG_BLS(BQ, REG_NUM, REG_NAME, IN)		\
+	_BQ2591X_UPDATE_REG_BLS(BQ, REG_NUM, REG_NAME, IN,		\
+				__UNIQUE_ID(ret), __UNIQUE_ID(val))
 
 static int bq2591x_enable_charger(struct bq2591x *bq, bool enable)
 {
