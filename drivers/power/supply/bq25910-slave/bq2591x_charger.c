@@ -1026,15 +1026,19 @@ static int bq2591x_init_device(struct bq2591x *bq)
 
 static void bq2591x_dump_regs(struct bq2591x *bq)
 {
+	char regs_val[48];
 	u8 addr, val;
 	int ret;
 
 	for (addr = 0x00; addr <= 0x0D; addr++) {
-		msleep(2);
 		ret = bq2591x_read_byte(bq, &val, addr);
 		if (!ret)
-			dev_err(bq->dev, "Reg[%02X] = 0x%02X\n", addr, val);
+			snprintf(regs_val + addr * 3, 4, "%02X ", val);
+
+		msleep(2);
 	}
+
+	dev_info(bq->dev, "%s\n", regs_val);
 }
 
 static void bq2591x_stat_handler(struct bq2591x *bq)
