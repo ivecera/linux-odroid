@@ -314,7 +314,7 @@ fail:
  *
  * Return: 0 on success, errno on failure
  */
-static int
+int
 hdd_enable_disable_apf(struct hdd_adapter *adapter, bool apf_enable)
 {
 	QDF_STATUS status;
