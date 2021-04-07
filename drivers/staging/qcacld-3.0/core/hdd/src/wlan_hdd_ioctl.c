@@ -23,6 +23,7 @@
 #include <wlan_hdd_stats.h>
 #include "wlan_hdd_trace.h"
 #include "wlan_hdd_ioctl.h"
+#include "wlan_hdd_apf.h"
 #include "wlan_hdd_power.h"
 #include "wlan_hdd_regulatory.h"
 #include "wlan_osif_request_manager.h"
@@ -3669,6 +3670,19 @@ static int drv_cmd_set_suspend_mode(struct hdd_adapter *adapter,
 		hdd_debug("Send suspend mode to fw failed");
 		return -EINVAL;
 	}
+
+	hdd_prevent_suspend(WIFI_POWER_EVENT_WAKELOCK_WOW);
+	status = hdd_enable_disable_apf(adapter, idle_monitor == 1);
+	if (QDF_IS_STATUS_SUCCESS(status))
+		adapter->apf_context.apf_enabled = (idle_monitor == 1);
+	hdd_allow_suspend(WIFI_POWER_EVENT_WAKELOCK_WOW);
+
+	if (QDF_IS_STATUS_ERROR(status)) {
+		hdd_err("%s APF failed (status-%d)",
+			idle_monitor ? "Enable" : "Disable", status);
+		return -EINVAL;
+	}
+
 	return 0;
 }
 

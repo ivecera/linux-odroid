@@ -89,6 +89,9 @@ void hdd_apf_context_destroy(struct hdd_adapter *adapter);
  */
 void hdd_get_apf_capabilities_cb(void *hdd_context,
 				 struct sir_apf_get_offload *data);
+
+int hdd_enable_disable_apf(struct hdd_adapter *adapter, bool apf_enable);
+
 #else /* FEATURE_WLAN_APF */
 
 static inline void hdd_apf_context_init(struct hdd_adapter *adapter)
