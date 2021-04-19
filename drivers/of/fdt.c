@@ -30,6 +30,7 @@
 
 #include <asm/setup.h>  /* for COMMAND_LINE_SIZE */
 #include <asm/page.h>
+#include <asm/bootinfo.h>
 
 #include "of_private.h"
 
@@ -1091,6 +1092,8 @@ static const char *config_cmdline = "";
 int __init early_init_dt_scan_chosen(unsigned long node, const char *uname,
 				     int depth, void *data)
 {
+	unsigned long pu_reason;
+	const __be32 *prop;
 	int l = 0;
 	const char *p = NULL;
 	char *cmdline = data;
@@ -1127,6 +1130,14 @@ int __init early_init_dt_scan_chosen(unsigned long node, const char *uname,
 	}
 
 	pr_debug("Command line is: %s\n", (char*)data);
+
+	pr_debug("Looking for power-up reason property...\n");
+	prop = of_get_flat_dt_prop(node, "pureason", &l);
+	if (prop != NULL && l > 0) {
+		pu_reason = of_read_ulong(prop, l/4);
+		set_powerup_reason(pu_reason);
+		pr_debug("Power-up reason %lu\n", pu_reason);
+	}
 
 	/* break now */
 	return 1;
