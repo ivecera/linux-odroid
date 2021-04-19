@@ -48,50 +48,31 @@
 #define SMEM_IMAGE_VERSION_PARTITION_APPS 10
 
 static DECLARE_RWSEM(current_image_rwsem);
-enum {
-	HW_PLATFORM_UNKNOWN = 0,
-	HW_PLATFORM_SURF    = 1,
-	HW_PLATFORM_FFA     = 2,
-	HW_PLATFORM_FLUID   = 3,
-	HW_PLATFORM_SVLTE_FFA	= 4,
-	HW_PLATFORM_SVLTE_SURF	= 5,
-	HW_PLATFORM_MTP_MDM = 7,
-	HW_PLATFORM_MTP  = 8,
-	HW_PLATFORM_LIQUID  = 9,
-	/* Dragonboard platform id is assigned as 10 in CDT */
-	HW_PLATFORM_DRAGON	= 10,
-	HW_PLATFORM_QRD	= 11,
-	HW_PLATFORM_HRD	= 13,
-	HW_PLATFORM_DTV	= 14,
-	HW_PLATFORM_RCM	= 21,
-	HW_PLATFORM_STP = 23,
-	HW_PLATFORM_SBC = 24,
-	HW_PLATFORM_ADP = 25,
-	HW_PLATFORM_TTP = 30,
-	HW_PLATFORM_HDK = 31,
-	HW_PLATFORM_INVALID
-};
 
 const char *hw_platform[] = {
-	[HW_PLATFORM_UNKNOWN] = "Unknown",
-	[HW_PLATFORM_SURF] = "Surf",
-	[HW_PLATFORM_FFA] = "FFA",
-	[HW_PLATFORM_FLUID] = "Fluid",
-	[HW_PLATFORM_SVLTE_FFA] = "SVLTE_FFA",
-	[HW_PLATFORM_SVLTE_SURF] = "SLVTE_SURF",
-	[HW_PLATFORM_MTP_MDM] = "MDM_MTP_NO_DISPLAY",
-	[HW_PLATFORM_MTP] = "MTP",
-	[HW_PLATFORM_RCM] = "RCM",
-	[HW_PLATFORM_LIQUID] = "Liquid",
-	[HW_PLATFORM_DRAGON] = "Dragon",
-	[HW_PLATFORM_QRD] = "QRD",
-	[HW_PLATFORM_HRD] = "HRD",
-	[HW_PLATFORM_DTV] = "DTV",
-	[HW_PLATFORM_STP] = "STP",
-	[HW_PLATFORM_SBC] = "SBC",
-	[HW_PLATFORM_ADP] = "ADP",
-	[HW_PLATFORM_TTP] = "TTP",
-	[HW_PLATFORM_HDK] = "HDK",
+	[QCOM_HW_PLATFORM_UNKNOWN] = "Unknown",
+	[QCOM_HW_PLATFORM_SURF] = "Surf",
+	[QCOM_HW_PLATFORM_FFA] = "FFA",
+	[QCOM_HW_PLATFORM_FLUID] = "Fluid",
+	[QCOM_HW_PLATFORM_SVLTE_FFA] = "SVLTE_FFA",
+	[QCOM_HW_PLATFORM_SVLTE_SURF] = "SLVTE_SURF",
+	[QCOM_HW_PLATFORM_MTP_MDM] = "MDM_MTP_NO_DISPLAY",
+	[QCOM_HW_PLATFORM_MTP] = "MTP",
+	[QCOM_HW_PLATFORM_RCM] = "RCM",
+	[QCOM_HW_PLATFORM_LIQUID] = "Liquid",
+	[QCOM_HW_PLATFORM_DRAGON] = "Dragon",
+	[QCOM_HW_PLATFORM_QRD] = "QRD",
+	[QCOM_HW_PLATFORM_HRD] = "HRD",
+	[QCOM_HW_PLATFORM_DTV] = "DTV",
+	[QCOM_HW_PLATFORM_STP] = "STP",
+	[QCOM_HW_PLATFORM_SBC] = "SBC",
+	[QCOM_HW_PLATFORM_ADP] = "ADP",
+	[QCOM_HW_PLATFORM_TTP] = "TTP",
+	[QCOM_HW_PLATFORM_HDK] = "HDK",
+	[QCOM_HW_PLATFORM_E2]  = "SIRIUS",
+	[QCOM_HW_PLATFORM_F2]  = "GRUS",
+	[QCOM_HW_PLATFORM_F3B] = "PYXIS",
+	[QCOM_HW_PLATFORM_F3M] = "VELA",
 };
 
 enum {
@@ -795,6 +776,7 @@ uint32_t socinfo_get_platform_version(void)
 			socinfo->v0_4.platform_version : 0)
 		: 0;
 }
+EXPORT_SYMBOL(socinfo_get_platform_version);
 
 /* This information is directly encoded by the machine id */
 /* Thus no external callers rely on this information at the moment */
@@ -1013,7 +995,7 @@ msm_get_platform_subtype(struct device *dev,
 	uint32_t hw_subtype;
 
 	hw_subtype = socinfo_get_platform_subtype();
-	if (HW_PLATFORM_QRD == socinfo_get_platform_type()) {
+	if (QCOM_HW_PLATFORM_QRD == socinfo_get_platform_type()) {
 		if (hw_subtype >= PLATFORM_SUBTYPE_QRD_INVALID) {
 			pr_err("Invalid hardware platform sub type for qrd found\n");
 			hw_subtype = PLATFORM_SUBTYPE_QRD_INVALID;
