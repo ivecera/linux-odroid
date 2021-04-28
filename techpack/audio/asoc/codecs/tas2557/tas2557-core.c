@@ -796,6 +796,7 @@ static int fw_parse_data(struct tas2557_priv *pTAS2557, struct TFirmware *pFirmw
 			&(pImageData->mpBlocks[nBlock]), pData);
 		pData += n;
 	}
+end:
 	return pData - pDataStart;
 }
 
