@@ -38,6 +38,7 @@
 #include <linux/syscalls.h>
 #include <linux/fcntl.h>
 #include <linux/uaccess.h>
+#include <linux/interrupt.h>
 #include "tas2557.h"
 #include "tas2557-core.h"
 
