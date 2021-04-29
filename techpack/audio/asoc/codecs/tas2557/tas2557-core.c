@@ -540,10 +540,11 @@ int tas2557_enable(struct tas2557_priv *pTAS2557, bool bEnable)
 	if (bEnable) {
 		if (!pTAS2557->mbPowerUp) {
 			if (!pTAS2557->mbCalibrationLoaded) {
-				tas2557_set_calibration(pTAS2557, 0xFF);
-				pTAS2557->mbCalibrationLoaded = true;
+				if (tas2557_set_calibration(pTAS2557, 0xFF) < 0)
+					dev_err(pTAS2557->dev, "calibration data load fail!\n");
+				else
+					pTAS2557->mbCalibrationLoaded = true;
 			}
-
 			if (pTAS2557->mbLoadConfigurationPrePowerUp) {
 				dev_dbg(pTAS2557->dev, "load coefficient before power\n");
 				pTAS2557->mbLoadConfigurationPrePowerUp = false;
