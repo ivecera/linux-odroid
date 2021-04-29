@@ -48,8 +48,6 @@
 #include "tas2557-core.h"
 #include "tas2557-codec.h"
 
-#define KCONTROL_CODEC
-
 static unsigned int tas2557_codec_read(struct snd_soc_codec *pCodec,
 	unsigned int nRegister)
 {
@@ -241,11 +239,7 @@ static int tas2557_codec_remove(struct snd_soc_codec *pCodec)
 static int tas2557_power_ctrl_get(struct snd_kcontrol *pKcontrol,
 	struct snd_ctl_elem_value *pValue)
 {
-#ifdef KCONTROL_CODEC
 	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(pKcontrol);
-#else
-	struct snd_soc_codec *codec = snd_kcontrol_chip(pKcontrol);
-#endif
 	struct tas2557_priv *pTAS2557 = snd_soc_codec_get_drvdata(codec);
 
 	mutex_lock(&pTAS2557->codec_lock);
@@ -261,11 +255,7 @@ static int tas2557_power_ctrl_get(struct snd_kcontrol *pKcontrol,
 static int tas2557_power_ctrl_put(struct snd_kcontrol *pKcontrol,
 	struct snd_ctl_elem_value *pValue)
 {
-#ifdef KCONTROL_CODEC
 	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(pKcontrol);
-#else
-	struct snd_soc_codec *codec = snd_kcontrol_chip(pKcontrol);
-#endif
 	struct tas2557_priv *pTAS2557 = snd_soc_codec_get_drvdata(codec);
 
 	int nPowerOn = pValue->value.integer.value[0];
@@ -282,11 +272,7 @@ static int tas2557_power_ctrl_put(struct snd_kcontrol *pKcontrol,
 static int tas2557_fs_get(struct snd_kcontrol *pKcontrol,
 	struct snd_ctl_elem_value *pValue)
 {
-#ifdef KCONTROL_CODEC
 	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(pKcontrol);
-#else
-	struct snd_soc_codec *codec = snd_kcontrol_chip(pKcontrol);
-#endif
 	struct tas2557_priv *pTAS2557 = snd_soc_codec_get_drvdata(codec);
 	int nFS = 48000;
 
@@ -304,11 +290,7 @@ static int tas2557_fs_get(struct snd_kcontrol *pKcontrol,
 static int tas2557_fs_put(struct snd_kcontrol *pKcontrol,
 	struct snd_ctl_elem_value *pValue)
 {
-#ifdef KCONTROL_CODEC
 	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(pKcontrol);
-#else
-	struct snd_soc_codec *codec = snd_kcontrol_chip(pKcontrol);
-#endif
 	struct tas2557_priv *pTAS2557 = snd_soc_codec_get_drvdata(codec);
 	int ret = 0;
 	int nFS = pValue->value.integer.value[0];
@@ -325,11 +307,7 @@ static int tas2557_fs_put(struct snd_kcontrol *pKcontrol,
 static int tas2557_Cali_get(struct snd_kcontrol *pKcontrol,
 	struct snd_ctl_elem_value *pValue)
 {
-#ifdef KCONTROL_CODEC
 	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(pKcontrol);
-#else
-	struct snd_soc_codec *codec = snd_kcontrol_chip(pKcontrol);
-#endif
 	struct tas2557_priv *pTAS2557 = snd_soc_codec_get_drvdata(codec);
 	bool ret = 0;
 	int prm_r0 = 0;
@@ -348,11 +326,7 @@ static int tas2557_Cali_get(struct snd_kcontrol *pKcontrol,
 static int tas2557_program_get(struct snd_kcontrol *pKcontrol,
 	struct snd_ctl_elem_value *pValue)
 {
-#ifdef KCONTROL_CODEC
 	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(pKcontrol);
-#else
-	struct snd_soc_codec *codec = snd_kcontrol_chip(pKcontrol);
-#endif
 	struct tas2557_priv *pTAS2557 = snd_soc_codec_get_drvdata(codec);
 
 	mutex_lock(&pTAS2557->codec_lock);
@@ -368,11 +342,7 @@ static int tas2557_program_get(struct snd_kcontrol *pKcontrol,
 static int tas2557_program_put(struct snd_kcontrol *pKcontrol,
 	struct snd_ctl_elem_value *pValue)
 {
-#ifdef KCONTROL_CODEC
 	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(pKcontrol);
-#else
-	struct snd_soc_codec *codec = snd_kcontrol_chip(pKcontrol);
-#endif
 	struct tas2557_priv *pTAS2557 = snd_soc_codec_get_drvdata(codec);
 	unsigned int nProgram = pValue->value.integer.value[0];
 	int ret = 0, nConfiguration = -1;
@@ -390,11 +360,7 @@ static int tas2557_program_put(struct snd_kcontrol *pKcontrol,
 static int tas2557_configuration_get(struct snd_kcontrol *pKcontrol,
 	struct snd_ctl_elem_value *pValue)
 {
-#ifdef KCONTROL_CODEC
 	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(pKcontrol);
-#else
-	struct snd_soc_codec *codec = snd_kcontrol_chip(pKcontrol);
-#endif
 	struct tas2557_priv *pTAS2557 = snd_soc_codec_get_drvdata(codec);
 
 	mutex_lock(&pTAS2557->codec_lock);
@@ -410,11 +376,7 @@ static int tas2557_configuration_get(struct snd_kcontrol *pKcontrol,
 static int tas2557_configuration_put(struct snd_kcontrol *pKcontrol,
 	struct snd_ctl_elem_value *pValue)
 {
-#ifdef KCONTROL_CODEC
 	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(pKcontrol);
-#else
-	struct snd_soc_codec *codec = snd_kcontrol_chip(pKcontrol);
-#endif
 	struct tas2557_priv *pTAS2557 = snd_soc_codec_get_drvdata(codec);
 	unsigned int nConfiguration = pValue->value.integer.value[0];
 	int ret = 0;
@@ -431,11 +393,7 @@ static int tas2557_configuration_put(struct snd_kcontrol *pKcontrol,
 static int tas2557_calibration_get(struct snd_kcontrol *pKcontrol,
 	struct snd_ctl_elem_value *pValue)
 {
-#ifdef KCONTROL_CODEC
 	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(pKcontrol);
-#else
-	struct snd_soc_codec *codec = snd_kcontrol_chip(pKcontrol);
-#endif
 	struct tas2557_priv *pTAS2557 = snd_soc_codec_get_drvdata(codec);
 
 	mutex_lock(&pTAS2557->codec_lock);
@@ -452,11 +410,7 @@ static int tas2557_calibration_get(struct snd_kcontrol *pKcontrol,
 static int tas2557_calibration_put(struct snd_kcontrol *pKcontrol,
 	struct snd_ctl_elem_value *pValue)
 {
-#ifdef KCONTROL_CODEC
 	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(pKcontrol);
-#else
-	struct snd_soc_codec *codec = snd_kcontrol_chip(pKcontrol);
-#endif
 	struct tas2557_priv *pTAS2557 = snd_soc_codec_get_drvdata(codec);
 	unsigned int nCalibration = pValue->value.integer.value[0];
 	int ret = 0;
@@ -487,11 +441,7 @@ static const struct soc_enum classd_edge_enum[] = {
 static int tas2557_edge_get(struct snd_kcontrol *pKcontrol,
 			struct snd_ctl_elem_value *pValue)
 {
-#ifdef KCONTROL_CODEC
 	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(pKcontrol);
-#else
-	struct snd_soc_codec *codec = snd_kcontrol_chip(pKcontrol);
-#endif
 	struct tas2557_priv *pTAS2557 = snd_soc_codec_get_drvdata(codec);
 	mutex_lock(&pTAS2557->codec_lock);
 
@@ -503,11 +453,7 @@ static int tas2557_edge_get(struct snd_kcontrol *pKcontrol,
 static int tas2557_edge_put(struct snd_kcontrol *pKcontrol,
 			struct snd_ctl_elem_value *pValue)
 {
-#ifdef KCONTROL_CODEC
 	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(pKcontrol);
-#else
-	struct snd_soc_codec *codec = snd_kcontrol_chip(pKcontrol);
-#endif
 	struct tas2557_priv *pTAS2557 = snd_soc_codec_get_drvdata(codec);
 	unsigned int edge = pValue->value.integer.value[0];
 
