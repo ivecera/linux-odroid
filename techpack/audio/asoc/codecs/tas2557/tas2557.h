@@ -415,6 +415,7 @@ struct tas2557_priv {
 	unsigned char mnCurrentPage;
 	bool mbTILoadActive;
 	bool mbPowerUp;
+	bool mbMute;
 	bool mbLoadConfigurationPrePowerUp;
 	bool mbLoadCalibrationPostPowerUp;
 	bool mbCalibrationLoaded;

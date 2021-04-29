@@ -469,6 +469,30 @@ int tas2557_update_edge(struct tas2557_priv *pTAS2557)
 	return nResult;
 }
 
+int tas2557_permanent_mute(struct tas2557_priv *pTAS2557, bool bmute)
+{
+	int nResult = 0;
+
+	nResult = tas2557_enable(pTAS2557, !bmute);
+	if (nResult) {
+		dev_err(pTAS2557->dev, "set mute = %d failed\n", bmute);
+		return nResult;
+	}
+
+	pTAS2557->mbMute = bmute;
+
+	if (bmute) {
+		/* make sure codec is permanent mute */
+		p_tas2557_unmute_data[1] = 0x03;
+		p_tas2557_unmute_data[3] = 0x01;
+	} else {
+		p_tas2557_unmute_data[1] = 0x00;
+		p_tas2557_unmute_data[3] = 0x00;
+	}
+
+	return 0;
+}
+
 int tas2557_enable(struct tas2557_priv *pTAS2557, bool bEnable)
 {
 	int nResult = 0;

@@ -236,6 +236,41 @@ static int tas2557_codec_remove(struct snd_soc_codec *pCodec)
 	return 0;
 }
 
+static int tas2557_mute_ctrl_get(struct snd_kcontrol *pKcontrol,
+				 struct snd_ctl_elem_value *pValue)
+{
+	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(pKcontrol);
+	struct tas2557_priv *pTAS2557 = snd_soc_codec_get_drvdata(codec);
+
+	mutex_lock(&pTAS2557->codec_lock);
+
+	pValue->value.integer.value[0] = pTAS2557->mbMute;
+	dev_dbg(pTAS2557->dev, "tas2557_mute_ctrl_get = %d\n",
+		pTAS2557->mbMute);
+
+	mutex_unlock(&pTAS2557->codec_lock);
+
+	return 0;
+}
+
+static int tas2557_mute_ctrl_put(struct snd_kcontrol *pKcontrol,
+				 struct snd_ctl_elem_value *pValue)
+{
+	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(pKcontrol);
+	struct tas2557_priv *pTAS2557 = snd_soc_codec_get_drvdata(codec);
+
+	int mbMute = pValue->value.integer.value[0];
+
+	mutex_lock(&pTAS2557->codec_lock);
+
+	dev_dbg(pTAS2557->dev, "tas2557_mute_ctrl_put = %d\n", mbMute);
+	tas2557_permanent_mute(pTAS2557, mbMute);
+
+	mutex_unlock(&pTAS2557->codec_lock);
+
+	return 0;
+}
+
 static int tas2557_power_ctrl_get(struct snd_kcontrol *pKcontrol,
 	struct snd_ctl_elem_value *pValue)
 {
@@ -515,6 +550,8 @@ static const struct snd_kcontrol_new tas2557_snd_controls[] = {
 		tas2557_edge_get, tas2557_edge_put),
 	SOC_ENUM_EXT("SmartPA Version", pa_version,
 		pa_version_get, NULL),
+	SOC_SINGLE_EXT("SmartPA Mute", SND_SOC_NOPM, 0, 0x0001, 0,
+		tas2557_mute_ctrl_get, tas2557_mute_ctrl_put),
 };
 
 static struct snd_soc_codec_driver soc_codec_driver_tas2557 = {
