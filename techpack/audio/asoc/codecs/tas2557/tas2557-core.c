@@ -46,12 +46,13 @@
 #define	PPC_DRIVER_MTPLLSRC			0x00000400
 #define	PPC_DRIVER_CFGDEV_NONCRC	0x00000101
 
-#define TAS2557_CAL_NAME    "/mnt/vendor/persist/audio/tas2557_cal.bin"
+#define TAS2557_CAL_NAME	"/mnt/vendor/persist/audio/tas2557_cal.bin"
+#define TAS2557_CAL_NAME_NEW	"/mnt/vendor/persist/audio/tas2557_cal_new.bin"
 
 #define RESTART_MAX 3
 
 static int tas2557_load_calibration(struct tas2557_priv *pTAS2557,
-	char *pFileName);
+	const char *pFileName);
 static int tas2557_load_data(struct tas2557_priv *pTAS2557, struct TData *pData,
 	unsigned int nType);
 static void tas2557_clear_firmware(struct TFirmware *pFirmware);
@@ -1646,7 +1647,7 @@ void tas2557_clear_firmware(struct TFirmware *pFirmware)
 	memset(pFirmware, 0x00, sizeof(struct TFirmware));
 }
 
-static int tas2557_load_calibration(struct tas2557_priv *pTAS2557,	char *pFileName)
+static int tas2557_load_calibration(struct tas2557_priv *pTAS2557, const char *pFileName)
 {
 	int nResult = 0;
 
@@ -2023,12 +2024,23 @@ int tas2557_set_calibration(struct tas2557_priv *pTAS2557, int nCalibration)
 	}
 
 	if (nCalibration == 0x00FF) {
-		nResult = tas2557_load_calibration(pTAS2557, TAS2557_CAL_NAME);
-		if (nResult < 0) {
-			dev_info(pTAS2557->dev, "load new calibration file %s fail %d\n",
-				TAS2557_CAL_NAME, nResult);
-			goto end;
+		static const char *cal_files[] = {
+			TAS2557_CAL_NAME_NEW, TAS2557_CAL_NAME, NULL,
+		};
+		const char **cal;
+
+		for (cal = &cal_files[0]; *cal; cal++) {
+			nResult = tas2557_load_calibration(pTAS2557, *cal);
+			if (nResult >= 0)
+				break;
 		}
+
+		if (nResult < 0)
+			goto end;
+
+		dev_info(pTAS2557->dev,
+			 "calibration file %s loaded successfully\n", *cal);
+
 		nCalibration = 0;
 	}
 
