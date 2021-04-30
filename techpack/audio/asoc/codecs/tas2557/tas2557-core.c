@@ -504,26 +504,26 @@ int tas2557_enable(struct tas2557_priv *pTAS2557, bool bEnable)
 
 	dev_dbg(pTAS2557->dev, "Enable: %d\n", bEnable);
 
-	if ((pTAS2557->mpFirmware->mnPrograms == 0)
-		|| (pTAS2557->mpFirmware->mnConfigurations == 0)) {
-		dev_err(pTAS2557->dev, "%s, firmware not loaded\n", __func__);
-		/*Load firmware*/
-		if (pTAS2557->mnPGID == TAS2557_PG_VERSION_2P1) {
-			dev_info(pTAS2557->dev, "PG2.1 Silicon found\n");
-			pFWName = TAS2557_FW_NAME;
-		} else if (pTAS2557->mnPGID == TAS2557_PG_VERSION_1P0) {
-			dev_info(pTAS2557->dev, "PG1.0 Silicon found\n");
-			pFWName = TAS2557_PG1P0_FW_NAME;
-		} else {
+	if (!pTAS2557->mpFirmware->mnPrograms ||
+	    !pTAS2557->mpFirmware->mnConfigurations) {
+		dev_info(pTAS2557->dev, "firmware not loaded yet\n");
+
+		/* Load firmware */
+		pFWName = tas2557_get_fw_name(pTAS2557);
+		if (!pFWName) {
+			dev_err(pTAS2557->dev, "unsupported silicon 0x%x\n",
+				pTAS2557->mnPGID);
 			nResult = -ENOTSUPP;
-			dev_info(pTAS2557->dev, "unsupport Silicon 0x%x\n", pTAS2557->mnPGID);
 			goto end;
 		}
+
 		nResult = request_firmware_nowait(THIS_MODULE, 1, pFWName,
-			pTAS2557->dev, GFP_KERNEL, pTAS2557, tas2557_fw_ready);
-		if(nResult < 0)
+						  pTAS2557->dev, GFP_KERNEL,
+						  pTAS2557, tas2557_fw_ready);
+		if (nResult < 0)
 			goto end;
-		dev_err(pTAS2557->dev, "%s, firmware is loaded\n", __func__);
+
+		dev_info(pTAS2557->dev, "firmware '%s' was loaded\n", pFWName);
 	}
 
 	/* check safe guard*/
@@ -2115,6 +2115,25 @@ end:
 		*prm_r0 = nCali_Re;
 
 	return bFound;
+}
+
+const char *tas2557_get_fw_name(struct tas2557_priv *pTAS2557)
+{
+	const char *fw_name;
+
+	if (pTAS2557->mnPGID == TAS2557_PG_VERSION_2P1) {
+		dev_dbg(pTAS2557->dev, "PG2.1 silicon found\n");
+		fw_name = TAS2557_FW_NAME;
+	} else if (pTAS2557->mnPGID == TAS2557_PG_VERSION_1P0) {
+		dev_dbg(pTAS2557->dev, "PG1.0 silicon found\n");
+		fw_name = TAS2557_PG1P0_FW_NAME;
+	} else {
+		dev_info(pTAS2557->dev, "Unsupported Silicon 0x%x\n",
+			 pTAS2557->mnPGID);
+		return NULL;
+	}
+
+	return fw_name;
 }
 
 int tas2557_parse_dt(struct device *dev, struct tas2557_priv *pTAS2557)

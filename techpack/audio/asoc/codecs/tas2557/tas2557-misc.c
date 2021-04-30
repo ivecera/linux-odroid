@@ -457,11 +457,9 @@ static ssize_t tas2557_file_write(struct file *file, const char *buf, size_t cou
 	case TIAUDIO_CMD_FW_RELOAD:
 		if (count == 1) {
 			const char *pFWName;
-			if (pTAS2557->mnPGID == TAS2557_PG_VERSION_2P1)
-				pFWName = TAS2557_FW_NAME;
-			else if (pTAS2557->mnPGID == TAS2557_PG_VERSION_1P0)
-				pFWName = TAS2557_PG1P0_FW_NAME;
-			else
+
+			pFWName = tas2557_get_fw_name(pTAS2557);
+			if (!pFWName)
 				break;
 
 			ret = request_firmware_nowait(THIS_MODULE, 1, pFWName,

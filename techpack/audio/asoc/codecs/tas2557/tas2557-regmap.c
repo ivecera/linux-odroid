@@ -775,17 +775,6 @@ static int tas2557_i2c_probe(struct i2c_client *pClient,
 	msleep(1);
 	tas2557_dev_read(pTAS2557, TAS2557_REV_PGID_REG, &nValue);
 	pTAS2557->mnPGID = nValue;
-	if (pTAS2557->mnPGID == TAS2557_PG_VERSION_2P1) {
-		dev_info(pTAS2557->dev, "PG2.1 Silicon found\n");
-		pFWName = TAS2557_FW_NAME;
-	} else if (pTAS2557->mnPGID == TAS2557_PG_VERSION_1P0) {
-		dev_info(pTAS2557->dev, "PG1.0 Silicon found\n");
-		pFWName = TAS2557_PG1P0_FW_NAME;
-	} else {
-		nResult = -ENOTSUPP;
-		dev_info(pTAS2557->dev, "unsupport Silicon 0x%x\n", pTAS2557->mnPGID);
-		goto err;
-	}
 
 	if (gpio_is_valid(pTAS2557->mnGpioINT)) {
 		nResult = gpio_request(pTAS2557->mnGpioINT, "TAS2557-IRQ");
@@ -841,8 +830,17 @@ static int tas2557_i2c_probe(struct i2c_client *pClient,
 	pTAS2557->mtimer.function = temperature_timer_func;
 	INIT_WORK(&pTAS2557->mtimerwork, timer_work_routine);
 
+	pFWName = tas2557_get_fw_name(pTAS2557);
+	if (!pFWName) {
+		dev_err(pTAS2557->dev, "Unsupported silicon 0x%x\n",
+			pTAS2557->mnPGID);
+		nResult = -ENOTSUPP;
+		goto err;
+	}
+
 	nResult = request_firmware_nowait(THIS_MODULE, 1, pFWName,
-		pTAS2557->dev, GFP_KERNEL, pTAS2557, tas2557_fw_ready);
+					  pTAS2557->dev, GFP_KERNEL,
+					  pTAS2557, tas2557_fw_ready);
 
 err:
 
