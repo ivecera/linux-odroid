@@ -42,6 +42,9 @@ audio_mbhc-$(CONFIG_SND_SOC_WCD_MBHC_LEGACY) += wcd-mbhc-legacy.o
 obj-$(CONFIG_SND_SOC_MSM_HDMI_CODEC_RX) += audio_hdmi.o
 audio_hdmi-y := msm_hdmi_codec_rx.o
 
+obj-$(CONFIG_SPK_ID) += audio_spk_id.o
+audio_spk_id-y += spk-id.o
+
 obj-y += msm_sdw/ sdm660_cdc/ tas2557/ wcd934x/
 
 EXTRA_CFLAGS += -I$(srctree)/techpack/audio/include/uapi	\
