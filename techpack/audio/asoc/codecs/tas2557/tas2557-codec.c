@@ -45,6 +45,8 @@
 #include <sound/initval.h>
 #include <sound/tlv.h>
 
+#include <spk-id.h>
+
 #include "tas2557-core.h"
 #include "tas2557-codec.h"
 
@@ -304,6 +306,21 @@ static int tas2557_power_ctrl_put(struct snd_kcontrol *pKcontrol,
 	return 0;
 }
 
+static int vendor_id_get(struct snd_kcontrol *kcontrol,
+			 struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
+	struct tas2557_priv *pTAS2557 = snd_soc_codec_get_drvdata(codec);
+	int spk_id = VENDOR_ID_AAC;
+
+	if (pTAS2557->mpSpkIdPin)
+		spk_id = tas2557_spk_id_get(pTAS2557);
+
+	ucontrol->value.integer.value[0] = spk_id;
+
+	return 0;
+}
+
 static int pa_version_get(struct snd_kcontrol *kcontrol,
 			  struct snd_ctl_elem_value *ucontrol)
 {
@@ -525,6 +542,14 @@ static int tas2557_edge_put(struct snd_kcontrol *pKcontrol,
 	return 0;
 }
 
+static const char *vendor_id_text[] = {
+	"None", "AAC", "SSI", "GOER", "Unknown"
+};
+
+static const struct soc_enum vendor_id[] = {
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(vendor_id_text), vendor_id_text),
+};
+
 static const char *const pa_version_text[] = {
 	"Unknown", "tas2557_v1.0", "tas2557_v2.0", "tas2557_v2.1"
 };
@@ -548,6 +573,8 @@ static const struct snd_kcontrol_new tas2557_snd_controls[] = {
 		tas2557_calibration_get, tas2557_calibration_put),
 	SOC_ENUM_EXT("TAS2557 ClassD Edge", classd_edge_enum[0],
 		tas2557_edge_get, tas2557_edge_put),
+	SOC_ENUM_EXT("SPK ID", vendor_id,
+		vendor_id_get, NULL),
 	SOC_ENUM_EXT("SmartPA Version", pa_version,
 		pa_version_get, NULL),
 	SOC_SINGLE_EXT("SmartPA Mute", SND_SOC_NOPM, 0, 0x0001, 0,
