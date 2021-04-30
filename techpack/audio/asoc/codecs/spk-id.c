@@ -156,7 +156,7 @@ static int spk_id_probe(struct platform_device *pdev)
 	info->gpio = of_get_named_gpio(pdev->dev.of_node,
 				       "audio,speaker-id-gpio", 0);
 	if (gpio_is_valid(info->gpio)) {
-		ret = gpio_request(info->gpio, "speaker-id");
+		ret = devm_gpio_request(&pdev->dev, info->gpio, "speaker-id");
 		if (ret) {
 			dev_err(&pdev->dev, "failed to request gpio: %d\n",
 				info->gpio);
@@ -165,17 +165,6 @@ static int spk_id_probe(struct platform_device *pdev)
 	}
 
 	dev_set_drvdata(&pdev->dev, info);
-
-	return 0;
-}
-
-static int spk_id_remove(struct platform_device *pdev)
-{
-	struct spk_id_info *info;
-
-	info = dev_get_drvdata(&pdev->dev);
-	if (info && gpio_is_valid(info->gpio))
-		gpio_free(info->gpio);
 
 	return 0;
 }
@@ -192,7 +181,6 @@ static struct platform_driver spk_id_driver = {
 		.of_match_table = spk_id_match,
 	},
 	.probe = spk_id_probe,
-	.remove = spk_id_remove,
 };
 module_platform_driver(spk_id_driver);
 
