@@ -19,8 +19,6 @@
 ** =============================================================================
 */
 
-#ifdef CONFIG_TAS2557_REGMAP
-
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/init.h>
@@ -882,5 +880,3 @@ module_i2c_driver(tas2557_i2c_driver);
 MODULE_AUTHOR("Texas Instruments Inc.");
 MODULE_DESCRIPTION("TAS2557 I2C Smart Amplifier driver");
 MODULE_LICENSE("GPL v2");
-
-#endif
