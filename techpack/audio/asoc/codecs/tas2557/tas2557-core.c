@@ -2137,6 +2137,9 @@ const char *tas2557_get_fw_name(struct tas2557_priv *pTAS2557)
 		return NULL;
 	}
 
+	if (pTAS2557->mnSpkType == VENDOR_ID_GOER)
+		fw_name = TAS2557_GOER_FW_NAME;
+
 	return fw_name;
 }
 
