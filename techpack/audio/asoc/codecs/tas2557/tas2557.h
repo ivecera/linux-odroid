@@ -484,6 +484,8 @@ struct tas2557_priv {
 	int mnCurrentReg;
 	struct mutex file_lock;
 #endif
+	struct device_node *mpSpkIdPin;
+	int mnSpkType;
 
 };
 

@@ -38,6 +38,8 @@
 #include <linux/uaccess.h>
 #include <linux/crc8.h>
 
+#include <spk-id.h>
+
 #include "tas2557.h"
 #include "tas2557-core.h"
 
@@ -48,6 +50,8 @@
 
 #define TAS2557_CAL_NAME	"/mnt/vendor/persist/audio/tas2557_cal.bin"
 #define TAS2557_CAL_NAME_NEW	"/mnt/vendor/persist/audio/tas2557_cal_new.bin"
+
+#define SPK_ID_PIN_PROP		"ti,spk-id-pin"
 
 #define RESTART_MAX 3
 
@@ -2136,11 +2140,45 @@ const char *tas2557_get_fw_name(struct tas2557_priv *pTAS2557)
 	return fw_name;
 }
 
+int tas2557_spk_id_get(struct tas2557_priv *pTAS2557)
+{
+#ifdef CONFIG_SPK_ID
+	struct device_node *np = pTAS2557->mpSpkIdPin;
+	int state;
+
+	state = spk_id_get_pin_3state(np);
+	if (state < 0) {
+		dev_err(pTAS2557->dev, " Can not get id pin state, %d\n",
+			state);
+		return VENDOR_ID_NONE;
+	}
+
+	switch (state) {
+	case PIN_PULL_DOWN:	return VENDOR_ID_GOER;
+	case PIN_PULL_UP:	return VENDOR_ID_UNKNOWN;
+	case PIN_FLOAT:		return VENDOR_ID_AAC;
+	}
+#endif
+
+	return VENDOR_ID_UNKNOWN;
+}
+
 int tas2557_parse_dt(struct device *dev, struct tas2557_priv *pTAS2557)
 {
 	struct device_node *np = dev->of_node;
 	int rc = 0, ret = 0;
 	unsigned int value;
+
+	pTAS2557->mpSpkIdPin = of_parse_phandle(np, SPK_ID_PIN_PROP, 0);
+	if (!pTAS2557->mpSpkIdPin) {
+		dev_warn(pTAS2557->dev, "property %s not detected in node %s",
+			 SPK_ID_PIN_PROP, np->full_name);
+		pTAS2557->mnSpkType = VENDOR_ID_AAC;
+	} else {
+		pTAS2557->mnSpkType = tas2557_spk_id_get(pTAS2557);
+	}
+	dev_dbg(pTAS2557->dev, "%s is %d", SPK_ID_PIN_PROP,
+		pTAS2557->mnSpkType);
 
 	pTAS2557->mnResetGPIO = of_get_named_gpio(np, "ti,cdc-reset-gpio", 0);
 	if (!gpio_is_valid(pTAS2557->mnResetGPIO)) {
