@@ -269,6 +269,29 @@ static int tas2557_power_ctrl_put(struct snd_kcontrol *pKcontrol,
 	return 0;
 }
 
+static int pa_version_get(struct snd_kcontrol *kcontrol,
+			  struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
+	struct tas2557_priv *pTAS2557 = snd_soc_codec_get_drvdata(codec);
+
+	switch (pTAS2557->mnPGID) {
+	case TAS2557_PG_VERSION_1P0:
+		ucontrol->value.integer.value[0] = 1;
+		break;
+	case TAS2557_PG_VERSION_2P0:
+		ucontrol->value.integer.value[0] = 2;
+		break;
+	case TAS2557_PG_VERSION_2P1:
+		ucontrol->value.integer.value[0] = 3;
+		break;
+	default:
+		ucontrol->value.integer.value[0] = 0;
+	}
+
+	return 0;
+}
+
 static int tas2557_fs_get(struct snd_kcontrol *pKcontrol,
 	struct snd_ctl_elem_value *pValue)
 {
@@ -467,6 +490,14 @@ static int tas2557_edge_put(struct snd_kcontrol *pKcontrol,
 	return 0;
 }
 
+static const char *const pa_version_text[] = {
+	"Unknown", "tas2557_v1.0", "tas2557_v2.0", "tas2557_v2.1"
+};
+
+static const struct soc_enum pa_version[] = {
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(pa_version_text), pa_version_text),
+};
+
 static const struct snd_kcontrol_new tas2557_snd_controls[] = {
 	SOC_SINGLE_EXT("PowerCtrl", SND_SOC_NOPM, 0, 0x0001, 0,
 		tas2557_power_ctrl_get, tas2557_power_ctrl_put),
@@ -482,6 +513,8 @@ static const struct snd_kcontrol_new tas2557_snd_controls[] = {
 		tas2557_calibration_get, tas2557_calibration_put),
 	SOC_ENUM_EXT("TAS2557 ClassD Edge", classd_edge_enum[0],
 		tas2557_edge_get, tas2557_edge_put),
+	SOC_ENUM_EXT("SmartPA Version", pa_version,
+		pa_version_get, NULL),
 };
 
 static struct snd_soc_codec_driver soc_codec_driver_tas2557 = {
