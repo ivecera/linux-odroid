@@ -34,6 +34,10 @@ config SND_SOC_WSA881X_ANALOG
 config WCD9XXX_CODEC_CORE
 	bool
 
+config SPK_ID
+	tristate "Speaker-id driver"
+
 source "techpack/audio/asoc/codecs/msm_sdw/Kconfig"
 source "techpack/audio/asoc/codecs/sdm660_cdc/Kconfig"
+source "techpack/audio/asoc/codecs/tas2557/Kconfig"
 source "techpack/audio/asoc/codecs/wcd934x/Kconfig"
