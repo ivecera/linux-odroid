@@ -2127,7 +2127,7 @@ const char *tas2557_get_fw_name(struct tas2557_priv *pTAS2557)
 
 	if (pTAS2557->mnPGID == TAS2557_PG_VERSION_2P1) {
 		dev_dbg(pTAS2557->dev, "PG2.1 silicon found\n");
-		fw_name = TAS2557_FW_NAME;
+		fw_name = TAS2557_AAC_FW_NAME;
 	} else if (pTAS2557->mnPGID == TAS2557_PG_VERSION_1P0) {
 		dev_dbg(pTAS2557->dev, "PG1.0 silicon found\n");
 		fw_name = TAS2557_PG1P0_FW_NAME;
