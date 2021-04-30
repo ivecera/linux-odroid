@@ -474,10 +474,6 @@ config MACH_XIAOMI_E2
 config MACH_XIAOMI_F2
 	bool "F2 board"
 	select MACH_XIAOMI_SDM710
-	select SND_SOC_TAS2557
-	select TAS2557_REGMAP
-	select TAS2557_CODEC
-	select TAS2557_MISC
 	select SPK_ID
 	help
 	  This enables support for Xiaomi Mi 9 SE.
