@@ -50,10 +50,7 @@
 #include "tas2557-misc.h"
 #endif
 
-#define ENABLE_TILOAD
-#ifdef ENABLE_TILOAD
 #include "tiload.h"
-#endif
 
 #define LOW_TEMPERATURE_GAIN 6
 #define LOW_TEMPERATURE_COUNTER 12
@@ -821,9 +818,7 @@ static int tas2557_i2c_probe(struct i2c_client *pClient,
 	tas2557_register_misc(pTAS2557);
 #endif
 
-#ifdef ENABLE_TILOAD
 	tiload_driver_init(pTAS2557);
-#endif
 
 	hrtimer_init(&pTAS2557->mtimer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	pTAS2557->mtimer.function = temperature_timer_func;
