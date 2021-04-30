@@ -456,17 +456,11 @@ static ssize_t tas2557_file_write(struct file *file, const char *buf, size_t cou
 
 	case TIAUDIO_CMD_FW_RELOAD:
 		if (count == 1) {
-			const char *pFWName;
-
-			pFWName = tas2557_get_fw_name(pTAS2557);
-			if (!pFWName)
-				break;
-
-			ret = request_firmware_nowait(THIS_MODULE, 1, pFWName,
-				pTAS2557->dev, GFP_KERNEL, pTAS2557, tas2557_fw_ready);
-
+			ret = tas2557_load_firmware(pTAS2557);
 			if (g_logEnable)
-				dev_info(pTAS2557->dev, "TIAUDIO_CMD_FW_RELOAD: ret = %d\n", ret);
+				dev_info(pTAS2557->dev,
+					 "TIAUDIO_CMD_FW_RELOAD: ret = %d\n",
+					 ret);
 		}
 	break;
 

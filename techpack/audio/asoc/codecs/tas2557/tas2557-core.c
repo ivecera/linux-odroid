@@ -503,7 +503,6 @@ int tas2557_enable(struct tas2557_priv *pTAS2557, bool bEnable)
 {
 	int nResult = 0;
 	unsigned int nValue;
-	const char *pFWName;
 	struct TProgram *pProgram;
 
 	dev_dbg(pTAS2557->dev, "Enable: %d\n", bEnable);
@@ -513,21 +512,9 @@ int tas2557_enable(struct tas2557_priv *pTAS2557, bool bEnable)
 		dev_info(pTAS2557->dev, "firmware not loaded yet\n");
 
 		/* Load firmware */
-		pFWName = tas2557_get_fw_name(pTAS2557);
-		if (!pFWName) {
-			dev_err(pTAS2557->dev, "unsupported silicon 0x%x\n",
-				pTAS2557->mnPGID);
-			nResult = -ENOTSUPP;
-			goto end;
-		}
-
-		nResult = request_firmware_nowait(THIS_MODULE, 1, pFWName,
-						  pTAS2557->dev, GFP_KERNEL,
-						  pTAS2557, tas2557_fw_ready);
+		nResult = tas2557_load_firmware(pTAS2557);
 		if (nResult < 0)
 			goto end;
-
-		dev_info(pTAS2557->dev, "firmware '%s' was loaded\n", pFWName);
 	}
 
 	/* check safe guard*/
@@ -1803,7 +1790,7 @@ static bool tas2557_find_Tmax_in_configuration(struct tas2557_priv *pTAS2557,
 	return bFound;
 }
 
-void tas2557_fw_ready(const struct firmware *pFW, void *pContext)
+static void tas2557_fw_ready(const struct firmware *pFW, void *pContext)
 {
 	struct tas2557_priv *pTAS2557 = (struct tas2557_priv *) pContext;
 	int nResult;
@@ -1821,8 +1808,7 @@ void tas2557_fw_ready(const struct firmware *pFW, void *pContext)
 	dev_info(pTAS2557->dev, "%s:\n", __func__);
 
 	if (unlikely(!pFW) || unlikely(!pFW->data)) {
-		dev_err(pTAS2557->dev, "%s firmware is not loaded.\n",
-			TAS2557_FW_NAME);
+		dev_err(pTAS2557->dev, "firmware is not loaded.\n");
 		goto end;
 	}
 
@@ -2121,9 +2107,10 @@ end:
 	return bFound;
 }
 
-const char *tas2557_get_fw_name(struct tas2557_priv *pTAS2557)
+int tas2557_load_firmware(struct tas2557_priv *pTAS2557)
 {
 	const char *fw_name;
+	int ret;
 
 	if (pTAS2557->mnPGID == TAS2557_PG_VERSION_2P1) {
 		dev_dbg(pTAS2557->dev, "PG2.1 silicon found\n");
@@ -2134,13 +2121,24 @@ const char *tas2557_get_fw_name(struct tas2557_priv *pTAS2557)
 	} else {
 		dev_info(pTAS2557->dev, "Unsupported Silicon 0x%x\n",
 			 pTAS2557->mnPGID);
-		return NULL;
+		return -ENODEV;
 	}
 
 	if (pTAS2557->mnSpkType == VENDOR_ID_GOER)
 		fw_name = TAS2557_GOER_FW_NAME;
 
-	return fw_name;
+	ret = request_firmware_nowait(THIS_MODULE, 1, fw_name, pTAS2557->dev,
+				      GFP_KERNEL, pTAS2557, tas2557_fw_ready);
+	if (ret < 0) {
+		dev_err(pTAS2557->dev, "failed to load firmware '%s'\n",
+			fw_name);
+		return ret;
+	}
+
+	dev_info(pTAS2557->dev, "firmware '%s' successfully loaded\n",
+		 fw_name);
+
+	return 0;
 }
 
 int tas2557_spk_id_get(struct tas2557_priv *pTAS2557)

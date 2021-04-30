@@ -713,7 +713,6 @@ static int tas2557_i2c_probe(struct i2c_client *pClient,
 	struct tas2557_priv *pTAS2557;
 	int nResult = 0;
 	unsigned int nValue = 0;
-	const char *pFWName;
 
 	dev_info(&pClient->dev, "%s enter\n", __func__);
 
@@ -830,20 +829,8 @@ static int tas2557_i2c_probe(struct i2c_client *pClient,
 	pTAS2557->mtimer.function = temperature_timer_func;
 	INIT_WORK(&pTAS2557->mtimerwork, timer_work_routine);
 
-	pFWName = tas2557_get_fw_name(pTAS2557);
-	if (!pFWName) {
-		dev_err(pTAS2557->dev, "Unsupported silicon 0x%x\n",
-			pTAS2557->mnPGID);
-		nResult = -ENOTSUPP;
-		goto err;
-	}
-
-	nResult = request_firmware_nowait(THIS_MODULE, 1, pFWName,
-					  pTAS2557->dev, GFP_KERNEL,
-					  pTAS2557, tas2557_fw_ready);
-
+	nResult = tas2557_load_firmware(pTAS2557);
 err:
-
 	return nResult;
 }
 
