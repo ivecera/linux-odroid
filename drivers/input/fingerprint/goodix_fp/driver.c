@@ -32,7 +32,7 @@
 #include <linux/pm_wakeup.h>
 #include <net/netlink.h>
 
-#ifdef CONFIG_FINGERPRINT_GOODIX_FP_DRM_EVENTS
+#ifdef CONFIG_GOODIX_FP_DRM_EVENTS
 #include <drm/drm_bridge.h>
 #include <linux/msm_drm_notify.h>
 #endif
@@ -66,7 +66,7 @@ struct gf_key_map maps[] = {
 	{EV_KEY, GF_KEY_INPUT_MENU},
 	{EV_KEY, GF_KEY_INPUT_BACK},
 	{EV_KEY, GF_KEY_INPUT_POWER},
-#if defined(CONFIG_FINGERPRINT_GOODIX_FP_NAV_EVENT)
+#if defined(CONFIG_GOODIX_FP_NAV_EVENT)
 	{EV_KEY, GF_NAV_INPUT_UP},
 	{EV_KEY, GF_NAV_INPUT_DOWN},
 	{EV_KEY, GF_NAV_INPUT_RIGHT},
@@ -99,7 +99,7 @@ static void gf_disable_irq(struct gf_dev *gf_dev)
 	}
 }
 
-#ifdef CONFIG_FINGERPRINT_GOODIX_FP_CLK_CTRL
+#ifdef CONFIG_GOODIX_FP_CLK_CTRL
 static long spi_clk_max_rate(struct clk *clk, unsigned long rate)
 {
 	long lowest_available, nearest_low, step_size, cur;
@@ -142,7 +142,7 @@ static long spi_clk_max_rate(struct clk *clk, unsigned long rate)
 
 static int gf_clk_enable(struct gf_dev *gf_dev)
 {
-#ifdef CONFIG_FINGERPRINT_GOODIX_FP_CLK_CTRL
+#ifdef CONFIG_GOODIX_FP_CLK_CTRL
 	int rc;
 
 	if (gf_dev->clk_enabled)
@@ -168,7 +168,7 @@ static int gf_clk_enable(struct gf_dev *gf_dev)
 
 static int gf_clk_disable(struct gf_dev *gf_dev)
 {
-#ifdef CONFIG_FINGERPRINT_GOODIX_FP_CLK_CTRL
+#ifdef CONFIG_GOODIX_FP_CLK_CTRL
 	if (!gf_dev->clk_enabled)
 		return 0;
 
@@ -182,7 +182,7 @@ static int gf_clk_disable(struct gf_dev *gf_dev)
 static int gf_clk_init(struct gf_dev *gf_dev)
 {
 	int rc = 0;
-#ifdef CONFIG_FINGERPRINT_GOODIX_FP_CLK_CTRL
+#ifdef CONFIG_GOODIX_FP_CLK_CTRL
 	long rate;
 
 	gf_dev->core_clk = clk_get(gf_dev->dev, "core_clk");
@@ -230,7 +230,7 @@ error_clk_enable:
 
 static int gf_clk_fini(struct gf_dev *gf_dev)
 {
-#ifdef CONFIG_FINGERPRINT_GOODIX_FP_CLK_CTRL
+#ifdef CONFIG_GOODIX_FP_CLK_CTRL
 	if (gf_dev->clk_enabled)
 		gf_clk_disable(gf_dev);
 
@@ -371,7 +371,7 @@ static int gf_set_power(struct gf_dev *gf_dev, bool enable)
 		return 0;
 	}
 
-#ifdef CONFIG_FINGERPRINT_GOODIX_FP_POWER_CTRL
+#ifdef CONFIG_GOODIX_FP_POWER_CTRL
 	if (gpio_is_valid(gf_dev->pwr_gpio)) {
 		rc = gpio_direction_output(gf_dev->pwr_gpio, enable ? 1 : 0);
 		dev_info(gf_dev->dev, "set_power(%s) %s\n",
@@ -445,7 +445,7 @@ static long gf_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		gf_kernel_key_input(gf_dev, &gf_key);
 		break;
 	case GF_IOC_NAV_EVENT:
-#if defined(CONFIG_FINGERPRINT_GOODIX_FP_NAV_EVENT)
+#if defined(CONFIG_GOODIX_FP_NAV_EVENT)
 		dev_dbg(gf_dev->dev, "GF_IOC_NAV_EVENT\n");
 		if (copy_from_user(&nav_event, uptr, sizeof(nav_event)))
 			return -EFAULT;
@@ -633,7 +633,7 @@ static const struct file_operations gf_fops = {
 	.fasync = gf_fasync,
 };
 
-#ifdef CONFIG_FINGERPRINT_GOODIX_FP_DRM_EVENTS
+#ifdef CONFIG_GOODIX_FP_DRM_EVENTS
 static int gf_drm_notify(struct notifier_block *nb, unsigned long val,
 			 void *data)
 {
@@ -809,7 +809,7 @@ static int gf_parse_dts(struct gf_dev *gf_dev)
 {
 	int rc;
 
-#ifdef CONFIG_FINGERPRINT_GOODIX_FP_POWER_CTRL
+#ifdef CONFIG_GOODIX_FP_POWER_CTRL
 	/* get pwr resource */
 	rc = of_get_named_gpio(gf_dev->dev->of_node, "fp-gpio-pwr", 0);
 	if (gpio_is_valid(rc)) {
@@ -885,7 +885,7 @@ int gf_probe_common(struct device *dev)
 	if (gf_clk_init(gf_dev))
 		goto error_clk_init;
 
-#ifdef CONFIG_FINGERPRINT_GOODIX_FP_DRM_EVENTS
+#ifdef CONFIG_GOODIX_FP_DRM_EVENTS
 	gf_dev->notifier = goodix_noti_block;
 	rc = msm_drm_register_client(&gf_dev->notifier);
 	if (rc < 0) {
@@ -901,7 +901,7 @@ int gf_probe_common(struct device *dev)
 
 	return rc;
 
-#ifdef CONFIG_FINGERPRINT_GOODIX_FP_DRM_EVENTS
+#ifdef CONFIG_GOODIX_FP_DRM_EVENTS
 	msm_drm_unregister_client(&gf_dev->notifier);
 error_drm_reg:
 #endif
@@ -930,7 +930,7 @@ int gf_remove_common(struct device *dev)
 	/* Unregister and delete associated char device */
 	gf_del_cdev(gf_dev);
 
-#ifdef CONFIG_FINGERPRINT_GOODIX_FP_DRM_EVENTS
+#ifdef CONFIG_GOODIX_FP_DRM_EVENTS
 	/* Unregister DRM notifier */
 	msm_drm_unregister_client(&gf_dev->notifier);
 #endif
