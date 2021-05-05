@@ -83,7 +83,7 @@ static void gf_enable_irq(struct gf_dev *gf_dev)
 {
 	if (!gf_dev->irq_enabled) {
 		enable_irq(gf_dev->irq);
-		gf_dev->irq_enabled = 1;
+		gf_dev->irq_enabled = true;
 	} else {
 		dev_warn(gf_dev->dev, "IRQ has been already enabled\n");
 	}
@@ -92,7 +92,7 @@ static void gf_enable_irq(struct gf_dev *gf_dev)
 static void gf_disable_irq(struct gf_dev *gf_dev)
 {
 	if (gf_dev->irq_enabled) {
-		gf_dev->irq_enabled = 0;
+		gf_dev->irq_enabled = false;
 		disable_irq(gf_dev->irq);
 	} else {
 		dev_warn(gf_dev->dev, "IRQ has been already disabled\n");
@@ -161,7 +161,7 @@ static int gf_clk_enable(struct gf_dev *gf_dev)
 		return -ENOENT;
 	}
 
-	gf_dev->clk_enabled = 1;
+	gf_dev->clk_enabled = true;
 #endif
 	return 0;
 }
@@ -174,7 +174,7 @@ static int gf_clk_disable(struct gf_dev *gf_dev)
 
 	clk_disable_unprepare(gf_dev->core_clk);
 	clk_disable_unprepare(gf_dev->iface_clk);
-	gf_dev->clk_enabled = 0;
+	gf_dev->clk_enabled = false;
 #endif
 	return 0;
 }
@@ -657,7 +657,7 @@ static int gf_drm_notify(struct notifier_block *nb, unsigned long val,
 				dev_info(gf_dev->dev,
 					 "received MSM_DRM_BLANK_POWERDOWN\n");
 
-				gf_dev->fb_black = 1;
+				gf_dev->fb_black = true;
 				gf_dev->wait_finger_down = true;
 
 				/* Send netlink message */
@@ -672,7 +672,7 @@ static int gf_drm_notify(struct notifier_block *nb, unsigned long val,
 				dev_info(gf_dev->dev,
 					 "received MSM_DRM_BLANK_UNBLANK\n");
 
-				gf_dev->fb_black = 0;
+				gf_dev->fb_black = false;
 
 				/* Send netlink message */
 				gf_sendnlmsg(GF_NET_EVENT_FB_UNBLACK);
