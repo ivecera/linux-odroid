@@ -117,6 +117,9 @@ struct gf_dev {
 	bool avail;
 	char fb_black;
 	char wait_finger_down;
+#ifdef CONFIG_GOODIX_FP_PROXIMITY_STATE
+	int proximity_state; /* 0:far 1:near */
+#endif
 };
 
 int gf_probe_common(struct device *dev);
