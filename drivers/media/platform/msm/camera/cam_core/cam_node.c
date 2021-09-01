@@ -55,7 +55,7 @@ static struct cam_context *cam_node_get_ctxt_from_free_list(
 	if (!list_empty(&node->free_ctx_list)) {
 		ctx = list_first_entry(&node->free_ctx_list,
 			struct cam_context, list);
-		list_del_init(&ctx->list);
+		list_move_tail(&ctx->list, &node->acquired_ctx_list);
 	}
 	mutex_unlock(&node->list_mutex);
 	if (ctx)
@@ -70,8 +70,55 @@ void cam_node_put_ctxt_to_free_list(struct kref *ref)
 	struct cam_node *node = ctx->node;
 
 	mutex_lock(&node->list_mutex);
-	list_add_tail(&ctx->list, &node->free_ctx_list);
+	list_move_tail(&ctx->list, &node->free_ctx_list);
 	mutex_unlock(&node->list_mutex);
+}
+
+static void cam_node_recycle_ctxt_from_acquired_list(
+	struct cam_node *node)
+{
+	struct cam_context *ctx = NULL;
+	int rc;
+
+	mutex_lock(&node->list_mutex);
+	if (!list_empty(&node->acquired_ctx_list)) {
+		/* get oldest acquired context */
+		ctx = list_first_entry(&node->acquired_ctx_list,
+				       struct cam_context, list);
+
+		/* move it to free list */
+		list_move_tail(&ctx->list, &node->free_ctx_list);
+	}
+	mutex_unlock(&node->list_mutex);
+
+	if (!ctx)
+		return;
+
+	/* if not released do it now */
+	if (!ctx->ctx_released) {
+		struct cam_release_dev_cmd release;
+
+		release.dev_handle = ctx->dev_hdl;
+		release.session_handle = ctx->session_hdl;
+
+		rc = cam_context_handle_release_dev(ctx, &release);
+		if (rc)
+			CAM_ERR(CAM_CORE, "context release failed node %s",
+				node->name);
+
+		rc = cam_destroy_device_hdl(release.dev_handle);
+		if (rc)
+			CAM_ERR(CAM_CORE,
+				"destroy device handle is failed node %s",
+				node->name);
+	}
+
+	/* initialize rest of fields */
+	ctx->dev_hdl = -1;
+	ctx->link_hdl = -1;
+	ctx->session_hdl = -1;
+	ctx->state = CAM_CTX_AVAILABLE;
+	ctx->ctx_released = true;
 }
 
 static int __cam_node_handle_query_cap(struct cam_node *node,
@@ -107,8 +154,15 @@ static int __cam_node_handle_acquire_dev(struct cam_node *node,
 			node->name);
 		cam_node_print_ctx_state(node);
 
-		rc = -ENOMEM;
-		goto err;
+		/* recycle oldest context from acquired list */
+		cam_node_recycle_ctxt_from_acquired_list(node);
+
+		/* try again to get a context from free list */
+		ctx = cam_node_get_ctxt_from_free_list(node);
+		if (!ctx) {
+			rc = -ENOMEM;
+			goto err;
+		}
 	}
 
 	rc = cam_context_handle_acquire_dev(ctx, acquire);
@@ -117,6 +171,8 @@ static int __cam_node_handle_acquire_dev(struct cam_node *node,
 			node->name);
 		goto free_ctx;
 	}
+
+	ctx->ctx_released = false;
 
 	CAM_DBG(CAM_CORE, "[%s] Acquire ctx_id %d",
 		node->name, ctx->ctx_id);
@@ -340,6 +396,8 @@ destroy_dev_hdl:
 		node->name, ctx->ctx_id,
 		atomic_read(&(ctx->refcount.refcount)));
 
+	ctx->ctx_released = true;
+
 	return rc;
 }
 
@@ -501,6 +559,7 @@ int cam_node_init(struct cam_node *node, struct cam_hw_mgr_intf *hw_mgr_intf,
 
 	mutex_init(&node->list_mutex);
 	INIT_LIST_HEAD(&node->free_ctx_list);
+	INIT_LIST_HEAD(&node->acquired_ctx_list);
 	node->ctx_list = ctx_list;
 	node->ctx_size = ctx_size;
 	for (i = 0; i < ctx_size; i++) {
