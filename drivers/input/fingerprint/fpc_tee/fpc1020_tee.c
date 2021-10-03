@@ -38,8 +38,10 @@
 #include <linux/regulator/consumer.h>
 #include <linux/pm_wakeup.h>
 #include <linux/fb.h>
+#ifdef CONFIG_DRM
 #include <drm/drm_bridge.h>
 #include <drm/drm_notifier.h>
+#endif
 
 /* Do not enable hw monitor support on Sirius */
 #if defined(CONFIG_HWMON) && !defined(CONFIG_MACH_XIAOMI_E2)
@@ -102,7 +104,9 @@ struct fpc1020_data {
 	bool			prepared;
 	atomic_t		wakeup_enabled; /* Used both in ISR and non-ISR */
 	int			irqf;
+#ifdef CONFIG_DRM
 	struct notifier_block	fb_notifier;
+#endif
 	bool			fb_black;
 	bool			wait_finger_down;
 	struct work_struct	work;
@@ -633,6 +637,7 @@ static int fpc1020_request_named_gpio(struct fpc1020_data *fpc1020,
 	return 0;
 }
 
+#ifdef CONFIG_DRM
 static int fpc_fb_notif_callback(struct notifier_block *nb, unsigned long val,
 				 void *data)
 {
@@ -670,6 +675,7 @@ static int fpc_fb_notif_callback(struct notifier_block *nb, unsigned long val,
 static struct notifier_block fpc_notif_block = {
 	.notifier_call = fpc_fb_notif_callback,
 };
+#endif
 
 static int fpc1020_probe(struct platform_device *pdev)
 {
@@ -755,8 +761,10 @@ static int fpc1020_probe(struct platform_device *pdev)
 	fpc1020->fb_black = false;
 	fpc1020->wait_finger_down = false;
 	INIT_WORK(&fpc1020->work, notification_work);
+#ifdef CONFIG_DRM
 	fpc1020->fb_notifier = fpc_notif_block;
 	drm_register_client(&fpc1020->fb_notifier);
+#endif
 
 	dev_info(dev, "%s: ok\n", __func__);
 
@@ -768,7 +776,9 @@ static int fpc1020_remove(struct platform_device *pdev)
 {
 	struct fpc1020_data *fpc1020 = platform_get_drvdata(pdev);
 
+#ifdef CONFIG_DRM
 	drm_unregister_client(&fpc1020->fb_notifier);
+#endif
 	sysfs_remove_group(&pdev->dev.kobj, &attribute_group);
 	mutex_destroy(&fpc1020->lock);
 	wakeup_source_trash(&fpc1020->ttw_wl);
