@@ -117,7 +117,6 @@ struct gf_dev {
 	bool avail;
 	char fb_black;
 	char wait_finger_down;
-	struct work_struct work;
 };
 
 int gf_probe_common(struct device *dev);

@@ -502,14 +502,6 @@ static long gf_compat_ioctl(struct file *filp, unsigned int cmd,
 }
 #endif /* CONFIG_COMPAT */
 
-#ifdef CONFIG_FINGERPRINT_GOODIX_FP_DRM_EVENTS
-static void notification_work(struct work_struct *work)
-{
-	pr_debug("unblank\n");
-	dsi_bridge_interface_enable(FP_UNLOCK_REJECTION_TIMEOUT);
-}
-#endif
-
 static irqreturn_t gf_irq(int irq, void *handle)
 {
 	struct gf_dev *gf_dev = handle;
@@ -864,10 +856,6 @@ int gf_probe_common(struct device *dev)
 	gf_dev->reset_gpio = -EINVAL;
 	gf_dev->pwr_gpio = -EINVAL;
 	atomic_set(&gf_dev->users, 0);
-
-#ifdef CONFIG_FINGERPRINT_GOODIX_FP_DRM_EVENTS
-	INIT_WORK(&gf_dev->work, notification_work);
-#endif
 
 	rc = gf_parse_dts(gf_dev);
 	if (rc < 0)
