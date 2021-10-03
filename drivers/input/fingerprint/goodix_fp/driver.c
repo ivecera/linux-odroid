@@ -33,9 +33,8 @@
 #include <net/netlink.h>
 
 #ifdef CONFIG_FINGERPRINT_GOODIX_FP_DRM_EVENTS
-#include <linux/fb.h>
 #include <drm/drm_bridge.h>
-#include <drm/drm_notifier.h>
+#include <linux/msm_drm_notify.h>
 #endif
 
 #include "goodix_fp.h"
@@ -627,25 +626,25 @@ static const struct file_operations gf_fops = {
 static int gf_drm_notify(struct notifier_block *nb, unsigned long val,
 			 void *data)
 {
-	struct fb_event *evdata = data;
+	struct msm_drm_notifier *evdata = data;
 	struct gf_dev *gf_dev;
 	unsigned int blank;
 
-	if (val != DRM_EVENT_BLANK)
-		return 0;
+	if (val != MSM_DRM_EVENT_BLANK)
+		return NOTIFY_DONE;
 
 	gf_dev = container_of(nb, struct gf_dev, notifier);
 
 	dev_dbg(gf_dev->dev, "DRM notification with value: %lu\n", val);
 
 	if (evdata && evdata->data) {
-		blank = *(unsigned int *)(evdata->data);
+		blank = *(int *)(evdata->data);
 
 		switch (blank) {
-		case DRM_BLANK_POWERDOWN:
+		case MSM_DRM_BLANK_POWERDOWN:
 			if (gf_dev->avail) {
 				dev_info(gf_dev->dev,
-					 "received DRM_BLANK_POWERDOWN\n");
+					 "received MSM_DRM_BLANK_POWERDOWN\n");
 
 				gf_dev->fb_black = 1;
 				gf_dev->wait_finger_down = true;
@@ -657,10 +656,10 @@ static int gf_drm_notify(struct notifier_block *nb, unsigned long val,
 				kill_fasync(&gf_dev->async, SIGIO, POLL_IN);
 			}
 			break;
-		case DRM_BLANK_UNBLANK:
+		case MSM_DRM_BLANK_UNBLANK:
 			if (gf_dev->avail) {
 				dev_info(gf_dev->dev,
-					 "received DRM_BLANK_UNBLANK\n");
+					 "received MSM_DRM_BLANK_UNBLANK\n");
 
 				gf_dev->fb_black = 0;
 
@@ -877,7 +876,7 @@ int gf_probe_common(struct device *dev)
 
 #ifdef CONFIG_FINGERPRINT_GOODIX_FP_DRM_EVENTS
 	gf_dev->notifier = goodix_noti_block;
-	rc = drm_register_client(&gf_dev->notifier);
+	rc = msm_drm_register_client(&gf_dev->notifier);
 	if (rc < 0) {
 		dev_err(gf_dev->dev, "failed to register DRM client\n");
 		goto error_drm_reg;
@@ -892,6 +891,7 @@ int gf_probe_common(struct device *dev)
 	return rc;
 
 #ifdef CONFIG_FINGERPRINT_GOODIX_FP_DRM_EVENTS
+	msm_drm_unregister_client(&gf_dev->notifier);
 error_drm_reg:
 #endif
 	gf_clk_fini(gf_dev);
@@ -921,7 +921,7 @@ int gf_remove_common(struct device *dev)
 
 #ifdef CONFIG_FINGERPRINT_GOODIX_FP_DRM_EVENTS
 	/* Unregister DRM notifier */
-	drm_unregister_client(&gf_dev->notifier);
+	msm_drm_unregister_client(&gf_dev->notifier);
 #endif
 
 	return 0;
