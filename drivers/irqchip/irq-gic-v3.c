@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2013, 2014 ARM Limited, All Rights Reserved.
+ * Copyright (C) 2020 XiaoMi, Inc.
  * Author: Marc Zyngier <marc.zyngier@arm.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -41,6 +42,7 @@
 #include <asm/virt.h>
 
 #include <linux/syscore_ops.h>
+#include <linux/wakeup_reason.h>
 
 #include "irq-gic-common.h"
 
@@ -730,7 +732,9 @@ static void gic_show_resume_irq(struct gic_chip_data *gic)
 		else if (desc->action && desc->action->name)
 			name = desc->action->name;
 
-		pr_warn("%s: %d triggered %s\n", __func__, irq, name);
+		pr_warn("%s: %d triggered %s (hwirq %d)\n", __func__, irq, name, i);
+
+		log_wakeup_reason(irq);
 	}
 }
 
