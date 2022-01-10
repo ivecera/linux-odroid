@@ -20,6 +20,7 @@
 #include <linux/of_gpio.h>
 #include <linux/err.h>
 #include <linux/msm_drm_notify.h>
+#include <linux/kernfs.h>
 
 #include "msm_drv.h"
 #include "sde_connector.h"
@@ -62,6 +63,7 @@ static const struct of_device_id dsi_display_dt_match[] = {
 
 static struct dsi_display *primary_display;
 static struct dsi_display *secondary_display;
+static struct kernfs_node *primary_link;
 
 static void dsi_display_mask_ctrl_error_interrupts(struct dsi_display *display,
 			u32 mask, bool enable)
@@ -4618,8 +4620,9 @@ static int dsi_display_force_update_dsi_clk(struct dsi_display *display)
 	return rc;
 }
 
-static ssize_t sysfs_dynamic_dsi_clk_read(struct device *dev,
-	struct device_attribute *attr, char *buf)
+static ssize_t dynamic_dsi_clock_show(struct device *dev,
+				      struct device_attribute *attr,
+				      char *buf)
 {
 	int rc = 0;
 	struct dsi_display *display;
@@ -4649,8 +4652,9 @@ static ssize_t sysfs_dynamic_dsi_clk_read(struct device *dev,
 	return rc;
 }
 
-static ssize_t sysfs_dynamic_dsi_clk_write(struct device *dev,
-	struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t dynamic_dsi_clock_store(struct device *dev,
+				       struct device_attribute *attr,
+				       const char *buf, size_t count)
 {
 	int rc = 0;
 	int clk_rate;
@@ -4714,9 +4718,7 @@ static ssize_t sysfs_dynamic_dsi_clk_write(struct device *dev,
 
 }
 
-static DEVICE_ATTR(dynamic_dsi_clock, 0644,
-			sysfs_dynamic_dsi_clk_read,
-			sysfs_dynamic_dsi_clk_write);
+static DEVICE_ATTR_RW(dynamic_dsi_clock);
 
 static struct attribute *dynamic_dsi_clock_fs_attrs[] = {
 	&dev_attr_dynamic_dsi_clock.attr,
@@ -4726,18 +4728,68 @@ static struct attribute_group dynamic_dsi_clock_fs_attrs_group = {
 	.attrs = dynamic_dsi_clock_fs_attrs,
 };
 
+static struct attribute *display_fs_attrs[] = {
+	NULL,
+};
+static struct attribute_group display_fs_attrs_group = {
+	.attrs = display_fs_attrs,
+};
+
 static int dsi_display_sysfs_init(struct dsi_display *display)
 {
 	int rc = 0;
 	struct device *dev = &display->pdev->dev;
 
+	if (dev->parent) {
+		struct kernfs_node *dsi_node = dev->kobj.sd;
+
+		kernfs_get(dsi_node);
+
+		primary_link =
+			kernfs_create_link(dev->parent->kobj.sd,
+					   "soc:qcom,dsi-display-primary",
+					   dsi_node);
+
+		kernfs_put(dsi_node);
+
+		if (IS_ERR(primary_link)) {
+			pr_err("[%s] unable to create dsi-display symlink\n",
+			       display->name);
+
+			return PTR_ERR(primary_link);
+		}
+	}
+
+	rc = sysfs_create_group(&dev->kobj, &display_fs_attrs_group);
+	if (rc) {
+		pr_err("[%s] failed to create display device attributes\n",
+		       display->name);
+		goto err_display_attr;
+	}
+
 	if (display->panel->panel_mode == DSI_OP_CMD_MODE)
 		rc = sysfs_create_group(&dev->kobj,
 			&dynamic_dsi_clock_fs_attrs_group);
+
+	if (rc) {
+		pr_err("[%s] failed to create display device attributes\n",
+		       display->name);
+		goto err_dyn_dsi_attr;
+	}
+
 	pr_debug("[%s] dsi_display_sysfs_init:%d,panel mode:%d\n",
 		display->name, rc, display->panel->panel_mode);
-	return rc;
 
+	return 0;
+
+err_dyn_dsi_attr:
+	sysfs_remove_group(&dev->kobj, &display_fs_attrs_group);
+err_display_attr:
+	if (!IS_ERR_OR_NULL(primary_link))
+		kernfs_remove_by_name(primary_link->parent,
+				      primary_link->name);
+
+	return rc;
 }
 
 static int dsi_display_sysfs_deinit(struct dsi_display *display)
@@ -4747,6 +4799,12 @@ static int dsi_display_sysfs_deinit(struct dsi_display *display)
 	if (display->panel->panel_mode == DSI_OP_CMD_MODE)
 		sysfs_remove_group(&dev->kobj,
 			&dynamic_dsi_clock_fs_attrs_group);
+
+	sysfs_remove_group(&dev->kobj, &display_fs_attrs_group);
+
+	if (!IS_ERR_OR_NULL(primary_link))
+		kernfs_remove_by_name(primary_link->parent,
+				      primary_link->name);
 
 	return 0;
 
