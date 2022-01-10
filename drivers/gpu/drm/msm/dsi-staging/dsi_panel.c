@@ -891,8 +891,13 @@ static u32 dsi_panel_get_backlight(struct dsi_panel *panel)
 {
 	u32 bl_level = panel->bl_config.bl_level;
 
-	if (panel->doze_enabled)
-		bl_level = panel->bl_config.bl_doze_lbm;
+	if (panel->doze_enabled) {
+		/* Select backlight value depending on used doze mode */
+		if (panel->hbm_enabled)
+			bl_level = panel->bl_config.bl_doze_hbm;
+		else
+			bl_level = panel->bl_config.bl_doze_lbm;
+	}
 
 	return bl_level;
 }
@@ -913,13 +918,29 @@ static int __dsi_panel_send(struct dsi_panel *panel, enum dsi_cmd_set_type type,
 	__dsi_panel_send(PANEL, __PASTE(DSI_CMD_SET_,CMDSET),		\
 			 __stringify(CMDSET))
 
+static int dsi_panel_apply_hbm(struct dsi_panel *panel)
+{
+	return panel->hbm_enabled ?
+		DSI_PANEL_SEND(panel, DISP_HBM_ON) :
+		DSI_PANEL_SEND(panel, DISP_HBM_OFF);
+}
+
 static int dsi_panel_update_doze(struct dsi_panel *panel)
 {
 	int rc = 0;
 
 	if (panel->doze_enabled) {
-		/* We are entering doze mode */
-		rc = DSI_PANEL_SEND(panel, DOZE_LBM);
+		/* Select doze mode according HBM state */
+		if (panel->hbm_enabled) {
+			/* HBM enabled -> use HBM doze mode */
+			rc = DSI_PANEL_SEND(panel, DOZE_HBM);
+		} else {
+			/* HBM disabled -> use normal doze mode */
+			rc = DSI_PANEL_SEND(panel, DOZE_LBM);
+		}
+	} else {
+		/* Restore HBM mode when enabled by user */
+		rc = dsi_panel_apply_hbm(panel);
 	}
 
 	return rc;
@@ -955,6 +976,27 @@ int dsi_panel_set_backlight(struct dsi_panel *panel, u32 bl_lvl)
 		pr_err("Backlight type(%d) not supported\n", bl->type);
 		rc = -ENOTSUPP;
 	}
+
+	return rc;
+}
+
+int dsi_panel_set_hbm_enabled(struct dsi_panel *panel, bool status)
+{
+	int rc = 0;
+
+	if (!panel)
+		return -EINVAL;
+
+	dsi_panel_acquire_panel_lock(panel);
+
+	if (panel->hbm_enabled != status) {
+		panel->hbm_enabled = status;
+
+		if (dsi_panel_initialized(panel))
+			rc = dsi_panel_apply_hbm(panel);
+	}
+
+	dsi_panel_release_panel_lock(panel);
 
 	return rc;
 }
@@ -1801,6 +1843,8 @@ const char *cmd_set_prop_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-post-mode-switch-on-command",
 	"qcom,mdss-dsi-doze-hbm-command",
 	"qcom,mdss-dsi-doze-lbm-command",
+	"qcom,mdss-dsi-dispparam-hbm-on-command",
+	"qcom,mdss-dsi-dispparam-hbm-off-command",
 };
 
 const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
@@ -1827,6 +1871,8 @@ const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-post-mode-switch-on-command-state",
 	"qcom,mdss-dsi-doze-hbm-command-state",
 	"qcom,mdss-dsi-doze-lbm-command-state",
+	"qcom,mdss-dsi-dispparam-hbm-on-command-state",
+	"qcom,mdss-dsi-dispparam-hbm-off-command-state",
 };
 
 static int dsi_panel_get_cmd_pkt_count(const char *data, u32 length, u32 *cnt)
@@ -4181,7 +4227,13 @@ int dsi_panel_enable(struct dsi_panel *panel)
 		       panel->name, rc);
 	else
 		panel->panel_initialized = true;
+
+	/* Restore HBM mode if enabled by user */
+	if (panel->hbm_enabled)
+		dsi_panel_apply_hbm(panel);
+
 	mutex_unlock(&panel->panel_lock);
+
 	return rc;
 }
 
