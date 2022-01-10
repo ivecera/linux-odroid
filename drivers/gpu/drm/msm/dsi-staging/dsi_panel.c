@@ -887,6 +887,54 @@ static int dsi_panel_update_backlight(struct dsi_panel *panel,
 	return rc;
 }
 
+static u32 dsi_panel_get_backlight(struct dsi_panel *panel)
+{
+	u32 bl_level = panel->bl_config.bl_level;
+
+	if (panel->doze_enabled)
+		bl_level = panel->bl_config.bl_doze_lbm;
+
+	return bl_level;
+}
+
+static int __dsi_panel_send(struct dsi_panel *panel, enum dsi_cmd_set_type type,
+			    const char *name)
+{
+	int rc;
+
+	rc = dsi_panel_tx_cmd_set(panel, type);
+	if (rc)
+		pr_err("Failed to send %s cmd, rc=%d\n", name, rc);
+
+	return rc;
+}
+
+#define DSI_PANEL_SEND(PANEL, CMDSET)					\
+	__dsi_panel_send(PANEL, __PASTE(DSI_CMD_SET_,CMDSET),		\
+			 __stringify(CMDSET))
+
+static int dsi_panel_update_doze(struct dsi_panel *panel)
+{
+	int rc = 0;
+
+	if (panel->doze_enabled) {
+		/* We are entering doze mode */
+		rc = DSI_PANEL_SEND(panel, DOZE_LBM);
+	}
+
+	return rc;
+}
+
+int dsi_panel_set_doze_status(struct dsi_panel *panel, bool status)
+{
+	if (panel->doze_enabled == status)
+		return 0;
+
+	panel->doze_enabled = status;
+
+	return dsi_panel_update_doze(panel);
+}
+
 int dsi_panel_set_backlight(struct dsi_panel *panel, u32 bl_lvl)
 {
 	int rc = 0;
@@ -1751,6 +1799,8 @@ const char *cmd_set_prop_map[DSI_CMD_SET_MAX] = {
 	"ROI not parsed from DTSI, generated dynamically",
 	"qcom,mdss-dsi-timing-switch-command",
 	"qcom,mdss-dsi-post-mode-switch-on-command",
+	"qcom,mdss-dsi-doze-hbm-command",
+	"qcom,mdss-dsi-doze-lbm-command",
 };
 
 const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
@@ -1775,6 +1825,8 @@ const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
 	"ROI not parsed from DTSI, generated dynamically",
 	"qcom,mdss-dsi-timing-switch-command-state",
 	"qcom,mdss-dsi-post-mode-switch-on-command-state",
+	"qcom,mdss-dsi-doze-hbm-command-state",
+	"qcom,mdss-dsi-doze-lbm-command-state",
 };
 
 static int dsi_panel_get_cmd_pkt_count(const char *data, u32 length, u32 *cnt)
@@ -2365,6 +2417,22 @@ static int dsi_panel_parse_bl_config(struct dsi_panel *panel,
 
 	panel->bl_config.bl_inverted_dbv =
 		of_property_read_bool(of_node, "qcom,mdss-dsi-bl-inverted-dbv");
+
+	panel->bl_config.bl_doze_lbm = 0;
+	rc = of_property_read_u32(of_node, "qcom,disp-doze-lbm-backlight",
+				  &val);
+	if (!rc)
+		panel->bl_config.bl_doze_lbm = val;
+	else
+		pr_debug("set doze lbm backlight to 0\n");
+
+	panel->bl_config.bl_doze_hbm = 0;
+	rc = of_property_read_u32(of_node, "qcom,disp-doze-hbm-backlight",
+				  &val);
+	if (!rc)
+		panel->bl_config.bl_doze_hbm = val;
+	else
+		pr_debug("set doze hbm backlight to 0\n");
 
 	if (panel->bl_config.type == DSI_BACKLIGHT_PWM) {
 		rc = dsi_panel_parse_bl_pwm_config(&panel->bl_config, of_node);
@@ -3350,6 +3418,7 @@ struct dsi_panel *dsi_panel_get(struct device *parent,
 	}
 
 	panel->panel_of_node = of_node;
+	panel->doze_enabled = false;
 	panel->power_mode = SDE_MODE_DPMS_OFF;
 	drm_panel_init(&panel->drm_panel);
 	mutex_init(&panel->panel_lock);
@@ -3818,6 +3887,10 @@ int dsi_panel_set_lp1(struct dsi_panel *panel)
 	if (rc)
 		pr_err("[%s] failed to send DSI_CMD_SET_LP1 cmd, rc=%d\n",
 		       panel->name, rc);
+
+	rc = dsi_panel_set_doze_status(panel, true);
+	if (rc)
+		pr_err("unable to set doze on\n");
 exit:
 	mutex_unlock(&panel->panel_lock);
 	return rc;
@@ -3843,6 +3916,10 @@ int dsi_panel_set_lp2(struct dsi_panel *panel)
 	if (rc)
 		pr_err("[%s] failed to send DSI_CMD_SET_LP2 cmd, rc=%d\n",
 		       panel->name, rc);
+
+	rc = dsi_panel_set_doze_status(panel, true);
+	if (rc)
+		pr_err("unable to set doze on\n");
 exit:
 	mutex_unlock(&panel->panel_lock);
 	return rc;
@@ -3876,6 +3953,10 @@ int dsi_panel_set_nolp(struct dsi_panel *panel)
 	if (rc)
 		pr_err("[%s] failed to send DSI_CMD_SET_NOLP cmd, rc=%d\n",
 		       panel->name, rc);
+
+	rc = dsi_panel_set_doze_status(panel, false);
+	if (rc)
+		pr_err("unable to set doze off\n");
 exit:
 	mutex_unlock(&panel->panel_lock);
 	return rc;
@@ -4190,6 +4271,7 @@ int dsi_panel_disable(struct dsi_panel *panel)
 	}
 	panel->panel_initialized = false;
 	panel->power_mode = SDE_MODE_DPMS_OFF;
+	panel->doze_enabled = false;
 
 error:
 	mutex_unlock(&panel->panel_lock);
