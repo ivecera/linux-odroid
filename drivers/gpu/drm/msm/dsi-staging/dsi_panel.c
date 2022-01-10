@@ -877,6 +877,9 @@ static int dsi_panel_update_backlight(struct dsi_panel *panel,
 
 	dsi = &panel->mipi_device;
 
+	if (panel->bl_config.bl_inverted_dbv)
+		bl_lvl = (((bl_lvl & 0xff) << 8) | (bl_lvl >> 8));
+
 	rc = mipi_dsi_dcs_set_display_brightness(dsi, bl_lvl);
 	if (rc < 0)
 		pr_err("failed to update dcs backlight:%d\n", bl_lvl);
@@ -2360,6 +2363,9 @@ static int dsi_panel_parse_bl_config(struct dsi_panel *panel,
 		panel->bl_config.brightness_max_level = val;
 	}
 
+	panel->bl_config.bl_inverted_dbv =
+		of_property_read_bool(of_node, "qcom,mdss-dsi-bl-inverted-dbv");
+
 	if (panel->bl_config.type == DSI_BACKLIGHT_PWM) {
 		rc = dsi_panel_parse_bl_pwm_config(&panel->bl_config, of_node);
 		if (rc) {
@@ -3237,6 +3243,7 @@ struct dsi_panel *dsi_panel_get(struct device *parent,
 				int topology_override,
 				enum dsi_panel_type type)
 {
+	const char *panel_physical_type;
 	struct dsi_panel *panel;
 	int rc = 0;
 
@@ -3249,6 +3256,17 @@ struct dsi_panel *dsi_panel_get(struct device *parent,
 			"qcom,mdss-dsi-panel-name", NULL);
 		if (!panel->name)
 			panel->name = DSI_PANEL_DEFAULT_LABEL;
+
+		/*
+		 * Set panel type to LCD as default.
+		 */
+		panel->panel_type = DSI_DISPLAY_PANEL_TYPE_LCD;
+		panel_physical_type =
+			of_get_property(of_node,
+					"qcom,mdss-dsi-panel-physical-type",
+					NULL);
+		if (panel_physical_type && !strcmp(panel_physical_type, "oled"))
+			panel->panel_type = DSI_DISPLAY_PANEL_TYPE_OLED;
 
 		rc = dsi_panel_parse_host_config(panel, of_node);
 		if (rc) {
@@ -3781,10 +3799,26 @@ int dsi_panel_set_lp1(struct dsi_panel *panel)
 		return 0;
 
 	mutex_lock(&panel->panel_lock);
+	if (!panel->panel_initialized)
+		goto exit;
+
+	/**
+	 * Consider LP1->LP2->LP1.
+	 * If the panel is already in LP mode, do not need to
+	 * set the regulator.
+	 * IBB and AB power mode woulc be set at the same time
+	 * in PMIC driver, so we only call ibb setting, that
+	 * is enough.
+	 */
+	if (dsi_panel_is_type_oled(panel) &&
+	    panel->power_mode != SDE_MODE_DPMS_LP2)
+		dsi_pwr_panel_regulator_mode_set(&panel->power_info,
+			"ibb", REGULATOR_MODE_IDLE);
 	rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_LP1);
 	if (rc)
 		pr_err("[%s] failed to send DSI_CMD_SET_LP1 cmd, rc=%d\n",
 		       panel->name, rc);
+exit:
 	mutex_unlock(&panel->panel_lock);
 	return rc;
 }
@@ -3802,10 +3836,14 @@ int dsi_panel_set_lp2(struct dsi_panel *panel)
 		return 0;
 
 	mutex_lock(&panel->panel_lock);
+	if (!panel->panel_initialized)
+		goto exit;
+
 	rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_LP2);
 	if (rc)
 		pr_err("[%s] failed to send DSI_CMD_SET_LP2 cmd, rc=%d\n",
 		       panel->name, rc);
+exit:
 	mutex_unlock(&panel->panel_lock);
 	return rc;
 }
@@ -3823,10 +3861,22 @@ int dsi_panel_set_nolp(struct dsi_panel *panel)
 		return 0;
 
 	mutex_lock(&panel->panel_lock);
+	if (!panel->panel_initialized)
+		goto exit;
+
+	/**
+	 * Consider about LP1->LP2->NOLP.
+	 */
+	if (dsi_panel_is_type_oled(panel) &&
+	    (panel->power_mode == SDE_MODE_DPMS_LP1 ||
+		panel->power_mode == SDE_MODE_DPMS_LP2))
+		dsi_pwr_panel_regulator_mode_set(&panel->power_info,
+			"ibb", REGULATOR_MODE_NORMAL);
 	rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_NOLP);
 	if (rc)
 		pr_err("[%s] failed to send DSI_CMD_SET_NOLP cmd, rc=%d\n",
 		       panel->name, rc);
+exit:
 	mutex_unlock(&panel->panel_lock);
 	return rc;
 }
@@ -4045,11 +4095,11 @@ int dsi_panel_enable(struct dsi_panel *panel)
 	mutex_lock(&panel->panel_lock);
 
 	rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_ON);
-	if (rc) {
+	if (rc)
 		pr_err("[%s] failed to send DSI_CMD_SET_ON cmds, rc=%d\n",
 		       panel->name, rc);
-	}
-	panel->panel_initialized = true;
+	else
+		panel->panel_initialized = true;
 	mutex_unlock(&panel->panel_lock);
 	return rc;
 }
@@ -4121,6 +4171,16 @@ int dsi_panel_disable(struct dsi_panel *panel)
 
 	/* Avoid sending panel off commands when ESD recovery is underway */
 	if (!atomic_read(&panel->esd_recovery_pending)) {
+		/*
+		 * Need to set IBB/AB regulator mode to STANDBY,
+		 * if panel is going off from AOD mode.
+		 */
+		if (dsi_panel_is_type_oled(panel) &&
+		      (panel->power_mode == SDE_MODE_DPMS_LP1 ||
+		       panel->power_mode == SDE_MODE_DPMS_LP2))
+			dsi_pwr_panel_regulator_mode_set(&panel->power_info,
+				"ibb", REGULATOR_MODE_STANDBY);
+
 		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_OFF);
 		if (rc) {
 			pr_err("[%s] failed to send DSI_CMD_SET_OFF cmds, rc=%d\n",
@@ -4129,6 +4189,7 @@ int dsi_panel_disable(struct dsi_panel *panel)
 		}
 	}
 	panel->panel_initialized = false;
+	panel->power_mode = SDE_MODE_DPMS_OFF;
 
 error:
 	mutex_unlock(&panel->panel_lock);
