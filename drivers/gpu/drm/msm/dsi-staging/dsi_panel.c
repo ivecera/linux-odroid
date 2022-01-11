@@ -902,6 +902,21 @@ static u32 dsi_panel_get_backlight(struct dsi_panel *panel)
 	return bl_level;
 }
 
+static int dsi_panel_adj_dc_backlight(struct dsi_panel *panel, bool status)
+{
+	u32 bl_lvl = dsi_panel_get_backlight(panel);
+	int rc;
+
+	if (status)
+		bl_lvl = max(bl_lvl, panel->bl_config.bl_dc_thresh);
+
+	rc = dsi_panel_update_backlight(panel, bl_lvl);
+	if (rc)
+		pr_err("Failed to update backlight\n");
+
+	return rc;
+}
+
 static inline int interpolate(int x, int xa, int xb, int ya, int yb)
 {
 	return ya + mult_frac(x - xa, yb - ya, xb - xa);
@@ -939,6 +954,20 @@ u32 dsi_panel_get_fod_dim_alpha(struct dsi_panel *panel)
 
 	return brightness_to_alpha(panel->fod_dim_lut, panel->fod_dim_lut_count,
 				   dsi_panel_get_backlight(panel));
+}
+
+u32 dsi_panel_get_dc_dim_alpha(struct dsi_panel *panel)
+{
+	u32 bl_lvl = dsi_panel_get_backlight(panel);
+
+	/* No dimming required if HBM mode is enabled by user or
+	 * device is in doze mode or backlight value is zero.
+	 */
+	if (panel->hbm_enabled || panel->doze_enabled || !bl_lvl)
+		return 0;
+
+	return brightness_to_alpha(panel->dc_dim_lut, panel->dc_dim_lut_count,
+				   bl_lvl);
 }
 
 static int __dsi_panel_send(struct dsi_panel *panel, enum dsi_cmd_set_type type,
@@ -1040,6 +1069,11 @@ enum msm_dim_layer_type dsi_panel_update_dimlayer(struct dsi_panel *panel,
 					       DISP_HBM_FOD_OFF_DOZE_LBM_ON);
 		}
 	}
+	else if (panel->dimlayer_type == MSM_DIM_LAYER_TOP ||
+		 type == MSM_DIM_LAYER_TOP) {
+		/* Switching DC dimming on or off. Adjust backlight.  */
+		dsi_panel_adj_dc_backlight(panel, panel->dc_dimming);
+	}
 
 	/* Swap new status with previous one */
 	type = xchg(&panel->dimlayer_type, type);
@@ -1058,6 +1092,14 @@ int dsi_panel_set_backlight(struct dsi_panel *panel, u32 bl_lvl)
 
 	if (panel->type == EXT_BRIDGE)
 		return 0;
+
+	/* Keep HW backlight above threshold if:
+	 * - DC dimming is enabled by user
+	 * - requested backlight level is not zero
+	 * - panel is not in doze mode
+	 */
+	if (panel->dc_dimming && bl_lvl && !panel->doze_enabled)
+		bl_lvl = max(bl->bl_dc_thresh, bl_lvl);
 
 	pr_debug("backlight type:%d lvl:%d\n", bl->type, bl_lvl);
 	switch (bl->type) {
@@ -2561,6 +2603,14 @@ static int dsi_panel_parse_fod_dim_lut(struct dsi_panel *panel,
 				       "qcom,disp-fod-dim-lut");
 }
 
+static int dsi_panel_parse_dc_dim_lut(struct dsi_panel *panel,
+				      struct device_node *of_node)
+{
+	return dsi_panel_parse_dim_lut(panel, of_node, &panel->dc_dim_lut,
+				       &panel->dc_dim_lut_count,
+				       "qcom,disp-dc-dim-lut");
+}
+
 static int dsi_panel_parse_bl_config(struct dsi_panel *panel,
 				     struct device_node *of_node)
 {
@@ -2650,6 +2700,18 @@ static int dsi_panel_parse_bl_config(struct dsi_panel *panel,
 	rc = dsi_panel_parse_fod_dim_lut(panel, of_node);
 	if (rc)
 		pr_err("[%s] failed to parse fod dim lut\n", panel->name);
+
+	panel->bl_config.bl_dc_thresh = 0;
+	rc = of_property_read_u32(of_node, "qcom,mdss-dsi-panel-dc-threshold",
+				  &val);
+	if (!rc)
+		panel->bl_config.bl_dc_thresh = val;
+	else
+		pr_err("[%s] dc-threshold unspecified\n", panel->name);
+
+	rc = dsi_panel_parse_dc_dim_lut(panel, of_node);
+	if (rc)
+		pr_err("[%s failed to parse dc dim lut\n", panel->name);
 
 	if (panel->bl_config.type == DSI_BACKLIGHT_PWM) {
 		rc = dsi_panel_parse_bl_pwm_config(&panel->bl_config, of_node);
