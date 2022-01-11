@@ -902,6 +902,45 @@ static u32 dsi_panel_get_backlight(struct dsi_panel *panel)
 	return bl_level;
 }
 
+static inline int interpolate(int x, int xa, int xb, int ya, int yb)
+{
+	return ya + mult_frac(x - xa, yb - ya, xb - xa);
+}
+
+static u32 brightness_to_alpha(struct brightness_alpha *lut, u32 lut_count,
+			       u32 brightness)
+{
+	int i;
+
+	if (!lut)
+		return 0;
+
+	for (i = 0; i < lut_count; i++)
+		if (lut[i].brightness >= brightness)
+			break;
+
+	if (!i)
+		return lut[i].alpha;
+	else if (i == lut_count)
+		return lut[i - 1].alpha;
+
+	return interpolate(brightness,
+			   lut[i - 1].brightness, lut[i].brightness,
+			   lut[i - 1].alpha, lut[i].alpha);
+}
+
+u32 dsi_panel_get_fod_dim_alpha(struct dsi_panel *panel)
+{
+	/* No dimming required if HBM mode is enabled by user and
+	 * device is not in doze mode.
+	 */
+	if (panel->hbm_enabled && !panel->doze_enabled)
+		return 0;
+
+	return brightness_to_alpha(panel->fod_dim_lut, panel->fod_dim_lut_count,
+				   dsi_panel_get_backlight(panel));
+}
+
 static int __dsi_panel_send(struct dsi_panel *panel, enum dsi_cmd_set_type type,
 			    const char *name)
 {
@@ -918,9 +957,15 @@ static int __dsi_panel_send(struct dsi_panel *panel, enum dsi_cmd_set_type type,
 	__dsi_panel_send(PANEL, __PASTE(DSI_CMD_SET_,CMDSET),		\
 			 __stringify(CMDSET))
 
-static int dsi_panel_apply_hbm(struct dsi_panel *panel)
+/* Use FOD variants of HBM commands for devices with FOD */
+#ifndef CONFIG_MACH_XIAOMI_E2 /* Sirius */
+#define DISP_HBM_ON	DISP_HBM_FOD_ON
+#define DISP_HBM_OFF	DISP_HBM_FOD_OFF
+#endif
+
+static int dsi_panel_apply_hbm(struct dsi_panel *panel, bool enable)
 {
-	return panel->hbm_enabled ?
+	return enable ?
 		DSI_PANEL_SEND(panel, DISP_HBM_ON) :
 		DSI_PANEL_SEND(panel, DISP_HBM_OFF);
 }
@@ -940,7 +985,8 @@ static int dsi_panel_update_doze(struct dsi_panel *panel)
 		}
 	} else {
 		/* Restore HBM mode when enabled by user */
-		rc = dsi_panel_apply_hbm(panel);
+		if (panel->hbm_enabled)
+			rc = dsi_panel_apply_hbm(panel, true);
 	}
 
 	return rc;
@@ -954,6 +1000,55 @@ int dsi_panel_set_doze_status(struct dsi_panel *panel, bool status)
 	panel->doze_enabled = status;
 
 	return dsi_panel_update_doze(panel);
+}
+
+enum msm_dim_layer_type dsi_panel_update_dimlayer(struct dsi_panel *panel,
+						  enum msm_dim_layer_type type)
+{
+	dsi_panel_acquire_panel_lock(panel);
+
+	/* Skip if type of dimlayer was not changed */
+	if (panel->dimlayer_type == type)
+		goto no_change;
+
+	if (type == MSM_DIM_LAYER_FOD) {
+		/* Switch to FOD mode */
+
+		/* Switch to HBM mode if:
+		 * - it is not already enabled by user
+		 * - we are coming from doze mode
+		 * - fod_pressed is true
+		 */
+		if (!panel->hbm_enabled || panel->doze_enabled)
+			dsi_panel_apply_hbm(panel, panel->fod_pressed);
+	}
+	else if (panel->dimlayer_type == MSM_DIM_LAYER_FOD) {
+		if (!panel->doze_enabled) {
+			/* Switch to normal mode */
+
+			/* Switch-off HBM if it is not enabled by user */
+			if (!panel->hbm_enabled)
+				dsi_panel_apply_hbm(panel, false);
+		} else {
+			/* Switch back to doze mode */
+
+			if (panel->hbm_enabled)
+				DSI_PANEL_SEND(panel,
+					       DISP_HBM_FOD_OFF_DOZE_HBM_ON);
+			else
+				DSI_PANEL_SEND(panel,
+					       DISP_HBM_FOD_OFF_DOZE_LBM_ON);
+		}
+	}
+
+	/* Swap new status with previous one */
+	type = xchg(&panel->dimlayer_type, type);
+
+no_change:
+	dsi_panel_release_panel_lock(panel);
+
+	/* Return previous dimming layer type */
+	return type;
 }
 
 int dsi_panel_set_backlight(struct dsi_panel *panel, u32 bl_lvl)
@@ -993,7 +1088,7 @@ int dsi_panel_set_hbm_enabled(struct dsi_panel *panel, bool status)
 		panel->hbm_enabled = status;
 
 		if (dsi_panel_initialized(panel))
-			rc = dsi_panel_apply_hbm(panel);
+			rc = dsi_panel_apply_hbm(panel, status);
 	}
 
 	dsi_panel_release_panel_lock(panel);
@@ -1845,6 +1940,10 @@ const char *cmd_set_prop_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-doze-lbm-command",
 	"qcom,mdss-dsi-dispparam-hbm-on-command",
 	"qcom,mdss-dsi-dispparam-hbm-off-command",
+	"qcom,mdss-dsi-dispparam-hbm-fod-on-command",
+	"qcom,mdss-dsi-dispparam-hbm-fod-off-command",
+	"qcom,mdss-dsi-dispparam-hbm-fod-off-doze-hbm-on-command",
+	"qcom,mdss-dsi-dispparam-hbm-fod-off-doze-lbm-on-command",
 };
 
 const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
@@ -1873,6 +1972,10 @@ const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-doze-lbm-command-state",
 	"qcom,mdss-dsi-dispparam-hbm-on-command-state",
 	"qcom,mdss-dsi-dispparam-hbm-off-command-state",
+	"qcom,mdss-dsi-dispparam-hbm-fod-on-command-state",
+	"qcom,mdss-dsi-dispparam-hbm-fod-off-command-state",
+	"qcom,mdss-dsi-dispparam-hbm-fod-off-doze-hbm-on-command-state",
+	"qcom,mdss-dsi-dispparam-hbm-fod-off-doze-lbm-on-command-state",
 };
 
 static int dsi_panel_get_cmd_pkt_count(const char *data, u32 length, u32 *cnt)
@@ -2394,6 +2497,70 @@ error:
 	return rc;
 }
 
+static int dsi_panel_parse_dim_lut(struct dsi_panel *panel,
+				   struct device_node *of_node,
+				   struct brightness_alpha **plut,
+				   u32 *pcount, const char *lut_name)
+{
+	struct brightness_alpha *lut = NULL;
+	u32 *array = NULL;
+	int count = 0;
+	int len;
+	int rc;
+	int i;
+
+	len = of_property_count_u32_elems(of_node, lut_name);
+	if (len <= 0 || len % 2) {
+		pr_err("[%s] Invalid number of elements, rc=%d\n",
+		       panel->name, rc);
+		rc = -EINVAL;
+		goto err;
+	}
+
+	array = kcalloc(len, sizeof(u32), GFP_KERNEL);
+	if (!array) {
+		pr_err("[%s] Failed to allocate memory, rc=%d\n",
+		       panel->name, rc);
+		rc = -ENOMEM;
+		goto err;
+	}
+
+	rc = of_property_read_u32_array(of_node, lut_name, array, len);
+	if (rc) {
+		pr_err("[%s] Failed to read LUT, rc=%d\n",
+		       panel->name, rc);
+		goto err;
+	}
+
+	count = len / 2;
+	lut = kcalloc(count, sizeof(*lut), GFP_KERNEL);
+	if (!lut) {
+		rc = -ENOMEM;
+		goto err;
+	}
+
+	for (i = 0; i < count; i++) {
+		lut[i].brightness = array[i * 2];
+		lut[i].alpha = array[i * 2 + 1];
+	}
+
+err:
+	kfree(array);
+
+	*plut = lut;
+	*pcount = count;
+
+	return rc;
+}
+
+static int dsi_panel_parse_fod_dim_lut(struct dsi_panel *panel,
+				       struct device_node *of_node)
+{
+	return dsi_panel_parse_dim_lut(panel, of_node, &panel->fod_dim_lut,
+				       &panel->fod_dim_lut_count,
+				       "qcom,disp-fod-dim-lut");
+}
+
 static int dsi_panel_parse_bl_config(struct dsi_panel *panel,
 				     struct device_node *of_node)
 {
@@ -2479,6 +2646,10 @@ static int dsi_panel_parse_bl_config(struct dsi_panel *panel,
 		panel->bl_config.bl_doze_hbm = val;
 	else
 		pr_debug("set doze hbm backlight to 0\n");
+
+	rc = dsi_panel_parse_fod_dim_lut(panel, of_node);
+	if (rc)
+		pr_err("[%s] failed to parse fod dim lut\n", panel->name);
 
 	if (panel->bl_config.type == DSI_BACKLIGHT_PWM) {
 		rc = dsi_panel_parse_bl_pwm_config(&panel->bl_config, of_node);
@@ -4230,7 +4401,7 @@ int dsi_panel_enable(struct dsi_panel *panel)
 
 	/* Restore HBM mode if enabled by user */
 	if (panel->hbm_enabled)
-		dsi_panel_apply_hbm(panel);
+		dsi_panel_apply_hbm(panel, panel->hbm_enabled);
 
 	mutex_unlock(&panel->panel_lock);
 

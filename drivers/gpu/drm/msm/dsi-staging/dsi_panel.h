@@ -181,6 +181,11 @@ struct dsi_panel_exd_config {
 	int selab;
 };
 
+struct brightness_alpha {
+	u32 brightness;
+	u32 alpha;
+};
+
 struct dsi_panel {
 	const char *name;
 	enum dsi_panel_type type;
@@ -228,6 +233,12 @@ struct dsi_panel {
 	bool hbm_enabled;
 	int power_mode;
 	enum dsi_panel_physical_type panel_type;
+
+	enum msm_dim_layer_type dimlayer_type;
+
+	u32 fod_dim_lut_count;
+	struct brightness_alpha *fod_dim_lut;
+	bool fod_pressed;
 
 	struct dsi_panel_exd_config exd_config;
 };
@@ -336,6 +347,24 @@ int dsi_panel_parse_esd_reg_read_configs(struct dsi_panel *panel,
 
 void dsi_panel_ext_bridge_put(struct dsi_panel *panel);
 
+u32 dsi_panel_get_fod_dim_alpha(struct dsi_panel *panel);
+
+static inline bool __dsi_panel_is_fod_pressed(struct dsi_panel *panel)
+{
+	return panel->fod_pressed;
+}
+
+static inline bool dsi_panel_is_fod_pressed(struct dsi_panel *panel)
+{
+	bool status;
+
+	dsi_panel_acquire_panel_lock(panel);
+	status = __dsi_panel_is_fod_pressed(panel);
+	dsi_panel_release_panel_lock(panel);
+
+	return status;
+}
+
 static inline bool dsi_panel_is_hbm_enabled(struct dsi_panel *panel)
 {
 	bool status;
@@ -347,6 +376,17 @@ static inline bool dsi_panel_is_hbm_enabled(struct dsi_panel *panel)
 	return status;
 }
 
+static inline void dsi_panel_set_fod_pressed(struct dsi_panel *panel,
+					     bool pressed)
+{
+	dsi_panel_acquire_panel_lock(panel);
+	panel->fod_pressed = pressed;
+	dsi_panel_release_panel_lock(panel);
+}
+
 int dsi_panel_set_hbm_enabled(struct dsi_panel *panel, bool status);
+
+enum msm_dim_layer_type dsi_panel_update_dimlayer(struct dsi_panel *panel,
+						  enum msm_dim_layer_type type);
 
 #endif /* _DSI_PANEL_H_ */

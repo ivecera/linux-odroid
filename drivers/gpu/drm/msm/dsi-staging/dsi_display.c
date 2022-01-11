@@ -4728,6 +4728,58 @@ static struct attribute_group dynamic_dsi_clock_fs_attrs_group = {
 	.attrs = dynamic_dsi_clock_fs_attrs,
 };
 
+static ssize_t fod_pressed_show(struct device *dev,
+				struct device_attribute *attr,
+				char *buf)
+{
+	struct dsi_display *display = dev_get_drvdata(dev);
+
+	if (!display->panel) {
+		pr_err("Invalid display\n");
+		return -EINVAL;
+	}
+
+	return snprintf(buf, PAGE_SIZE, "%d\n",
+			dsi_panel_is_fod_pressed(display->panel));
+}
+
+static ssize_t fod_pressed_store(struct device *dev,
+				 struct device_attribute *attr,
+				 const char *buf, size_t count)
+{
+	struct dsi_display *display = dev_get_drvdata(dev);
+	bool pressed;
+	int rc;
+
+	if (!display->panel) {
+		pr_err("Invalid display\n");
+		return -EINVAL;
+	}
+
+	rc = kstrtobool(buf, &pressed);
+	if (rc) {
+		pr_err("Failed to parse value, rc=%d\n", rc);
+		return rc;
+	}
+
+	dsi_panel_set_fod_pressed(display->panel, pressed);
+
+	return count;
+}
+
+static ssize_t fod_ui_show(struct device *dev, struct device_attribute *attr,
+			   char *buf)
+{
+	struct dsi_display *display = dev_get_drvdata(dev);
+
+	if (!display->panel) {
+		pr_err("Invalid display\n");
+		return -EINVAL;
+	}
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", display->fod_ui);
+}
+
 static ssize_t hbm_show(struct device *dev, struct device_attribute *attr,
 			char *buf)
 {
@@ -4769,9 +4821,13 @@ static ssize_t hbm_store(struct device *dev, struct device_attribute *attr,
 	return !rc ? count : rc;
 }
 
+static DEVICE_ATTR_RW(fod_pressed);
+static DEVICE_ATTR_RO(fod_ui);
 static DEVICE_ATTR_RW(hbm);
 
 static struct attribute *display_fs_attrs[] = {
+	&dev_attr_fod_pressed.attr,
+	&dev_attr_fod_ui.attr,
 	&dev_attr_hbm.attr,
 	NULL,
 };
@@ -5125,6 +5181,7 @@ static void dsi_display_unbind(struct device *dev,
 	}
 
 	atomic_set(&display->clkrate_change_pending, 0);
+	display->fod_ui = false;
 	(void)dsi_display_sysfs_deinit(display);
 	(void)dsi_display_debugfs_deinit(display);
 
@@ -5860,6 +5917,33 @@ int dsi_display_get_panel_vfp(void *dsi_display,
 		}
 	}
 	mutex_unlock(&display->display_lock);
+
+	return rc;
+}
+
+int dsi_display_get_dim_layer_alpha(void *dsi_display,
+				    enum msm_dim_layer_type type, u32 *alpha)
+{
+	struct dsi_display *display = dsi_display;
+	int rc = -ENOTSUPP;
+
+	dsi_panel_acquire_panel_lock(display->panel);
+
+	switch (type) {
+	case MSM_DIM_LAYER_FOD:
+		/* Enable dimming layer only if FOD is pressed */
+		rc = __dsi_panel_is_fod_pressed(display->panel) ? 1 : 0;
+
+		/* Retrieve alpha from panel if pressed */
+		if (rc)
+			*alpha = dsi_panel_get_fod_dim_alpha(display->panel);
+
+		break;
+	default:
+		pr_warn("Unknown dimming layer type\n");
+	}
+
+	dsi_panel_release_panel_lock(display->panel);
 
 	return rc;
 }
@@ -6658,8 +6742,22 @@ static int dsi_display_set_roi(struct dsi_display *display,
 int dsi_display_pre_kickoff(struct dsi_display *display,
 		struct msm_display_kickoff_params *params)
 {
+	enum msm_dim_layer_type prev_type;
 	int rc = 0;
 	int i;
+
+	/* pass current dimming layer type to panel */
+	prev_type = dsi_panel_update_dimlayer(display->panel,
+					      params->dim_layer_type);
+
+	/* check if we are switching from or to FOD dim layer type */
+	if (params->dim_layer_type != prev_type &&
+	    (params->dim_layer_type == MSM_DIM_LAYER_FOD ||
+	     prev_type == MSM_DIM_LAYER_FOD)) {
+		/* if so then notify userspace */
+		display->fod_ui = (params->dim_layer_type == MSM_DIM_LAYER_FOD);
+		sysfs_notify(&display->pdev->dev.kobj, NULL, "fod_ui");
+	}
 
 	/* check and setup MISR */
 	if (display->misr_enable)
